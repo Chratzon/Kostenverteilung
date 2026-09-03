@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Kostenverteilung</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F1B26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kostenverteilung">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1B26; --panel:rgba(20,32,44,0.7); --border:rgba(143,168,184,0.18);
+    --border-strong:rgba(143,168,184,0.25); --text:#E8EDF1; --muted:#8FA8B8; --muted2:#6C8598;
+    --accent:#C97A3D; --green:#5C8A5C; --greenBg:rgba(92,138,92,0.12); --greenText:#8FCB8F;
+    --buero:#3B6E8F; --baustelle:#C97A3D; --home:#5C8A5C;
+    --urlaub:#4E8FA8; --sonderurlaub:#8A6FB0; --krank:#B05C5C; --feiertag:#B0A34E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    background-image:linear-gradient(rgba(143,168,184,0.06) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(143,168,184,0.06) 1px, transparent 1px);
+    background-size:24px 24px;
+    padding-bottom:80px;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header{padding:20px 16px 12px; border-bottom:1px solid var(--border);}
+  .headwrap{display:flex; align-items:center; gap:10px;}
+  .logo{width:36px;height:36px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+  .title{font-size:17px;font-weight:700;letter-spacing:0.2px;}
+  .subtitle{font-size:11.5px;color:var(--muted);letter-spacing:0.5px;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px;}
+  .navrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .navbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border-strong);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+  .monthlabel{font-weight:600;font-size:15px;text-align:center;}
+  .monthsub{font-size:11px;color:var(--muted2);text-align:center;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
+  .calcard{padding:12px;}
+  .weekrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;}
+  .weekday{text-align:center;font-size:10.5px;color:var(--muted2);}
+  .daysgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .daycell{aspect-ratio:1;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12.5px;font-weight:500;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;}
+  .daycell.weekend{color:#5C7183;background:rgba(255,255,255,0.02);}
+  .daycell.holiday{box-shadow:inset 0 0 0 1px var(--feiertag);}
+  .daycell.selected{border:1.5px solid var(--accent);font-weight:700;}
+  .daycell .dot{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;}
+  .legend{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
+  .legenditem{display:flex;align-items:center;gap:5px;}
+  .legenddot{width:8px;height:8px;border-radius:50%;}
+  .legendtext{font-size:10px;color:var(--muted);}
+  .dayheader{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:600;font-size:14px;flex-wrap:wrap;}
+  .holidaynote{font-size:11.5px;color:var(--feiertag);margin-bottom:12px;display:none;}
+  .daytyperow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+  .daytypebtn{padding:9px 4px;border-radius:8px;border:1px solid var(--border-strong);background:transparent;color:#B8C7D1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:10.5px;font-weight:500;}
+  .daytypebtn .icon{font-size:15px;}
+  .sectionlabel{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .sectionlabel .mono{font-size:11px;color:var(--muted);letter-spacing:0.5px;}
+  .addbtn{background:none;border:none;color:var(--accent);cursor:pointer;display:flex;align-items:center;gap:3px;font-size:12px;font-weight:600;}
+  .addprojectrow{display:flex;gap:6px;margin-bottom:12px;}
+  input[type=text], input[type=number], input[type=time]{background:rgba(15,27,38,0.8);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;font-family:inherit;}
+  input[type=text]{flex:1;}
+  .numinput{width:76px;flex:none !important;}
+  .projectrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .projectname{flex:1;font-size:13.5px;color:#DCE5EA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .projectnum{font-size:10.5px;color:var(--muted2);}
+  .pctinput{width:60px;text-align:right;}
+  .pctsign{font-size:13px;color:var(--muted2);}
+  .delbtn{background:none;border:none;color:#5C7183;cursor:pointer;padding:4px;font-size:14px;}
+  .sumrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+  .sumlabel{font-size:11.5px;color:var(--muted2);}
+  .sumvalue{font-size:14px;font-weight:700;}
+  .emptynote{color:var(--muted2);font-size:12.5px;padding:12px 0;text-align:center;}
+  .infonote{color:var(--muted2);font-size:12px;padding:8px 0;text-align:center;}
+  .btnrow{display:flex;gap:8px;margin-top:16px;}
+  .savebtn{flex:1;padding:11px;border-radius:8px;border:none;background:var(--accent);color:var(--bg);font-weight:700;font-size:13.5px;cursor:pointer;}
+  .clearbtn{padding:11px 14px;border-radius:8px;border:1px solid var(--border-strong);background:transparent;color:#B8C7D1;cursor:pointer;font-size:14px;}
+  .exportbtns{display:flex;gap:8px;}
+  .previewbtn, .downloadbtn{flex:1;padding:13px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .previewbtn{border:1.5px solid var(--border-strong);background:transparent;color:var(--text);}
+  .downloadbtn{border:1.5px solid var(--green);background:var(--greenBg);color:var(--greenText);}
+  .footnote{font-size:10.5px;color:#4E6577;text-align:center;margin-top:12px;line-height:1.6;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  .toast.ok{background:#2E4A38;}
+  .toast.error{background:#5A2E2E;}
+  .settingsrow{display:flex;gap:8px;align-items:center;}
+  .settingsrow label{font-size:11.5px;color:var(--muted2);white-space:nowrap;}
+
+  .modaloverlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-end;justify-content:center;z-index:100;}
+  .modaloverlay.show{display:flex;}
+  .modal{background:#132433;border:1px solid var(--border-strong);border-radius:14px 14px 0 0;max-width:520px;width:100%;max-height:85vh;display:flex;flex-direction:column;}
+  .modalhead{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);}
+  .modaltitle{font-weight:700;font-size:14.5px;}
+  .modalclose{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;}
+  .modalbody{overflow:auto;padding:0;}
+  table.preview{border-collapse:collapse;width:100%;font-size:11px;}
+  table.preview th{position:sticky;top:0;background:#1B2E3D;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:center;padding:6px 8px;border-bottom:1px solid var(--border-strong);border-right:1px solid var(--border);white-space:nowrap;}
+  table.preview td{padding:6px 8px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;color:#DCE5EA;font-family:'IBM Plex Mono',monospace;text-align:center;}
+  table.preview tr.weekend td{background:rgba(255,255,255,0.03);color:#5C7183;}
+  table.preview tr.totalrow td{background:rgba(201,122,61,0.12);font-weight:700;color:#fff;}
+  table.preview td.tagcol, table.preview th.tagcol{text-align:center;color:var(--muted);}
+  .modalfoot{padding:14px 16px;border-top:1px solid var(--border);}
+  .previewlegend{padding:10px 16px;font-size:10.5px;color:var(--muted2);border-top:1px solid var(--border);line-height:1.6;}
+
+  /* --- Tabs (Kostenverteilung / Auslagen) --- */
+  .maintabs{display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:16px;}
+  .maintabs button{flex:1;border:none;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:10px 4px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .maintabs button.active{background:var(--accent);color:var(--bg);}
+
+  /* --- Auslagen: Kategorien --- */
+  .katrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;}
+  .katbtn{padding:9px 3px;border-radius:8px;border:1px solid var(--border-strong);background:transparent;color:#B8C7D1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:10px;font-weight:500;}
+  .katbtn .icon{font-size:15px;}
+  .katbtn.active{color:#fff;}
+  .katchip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 7px;border-radius:20px;}
+
+  /* --- Beleg-Erfassung --- */
+  .capturebtn{width:100%;padding:14px;border-radius:10px;border:1.5px dashed var(--border-strong);background:transparent;color:var(--text);font-weight:600;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .capturebtn .icon{font-size:18px;}
+  .receiptpreviewwrap{position:relative;width:100%;border-radius:10px;overflow:hidden;border:1px solid var(--border-strong);margin-bottom:10px;background:#000;touch-action:manipulation;}
+  .receiptpreviewwrap img{width:100%;display:block;}
+  .ocrword{position:absolute;border:1.5px solid rgba(201,122,61,0.85);background:rgba(201,122,61,0.14);border-radius:3px;cursor:pointer;}
+  .ocrword.datum-guess{border-color:rgba(79,143,168,0.9);background:rgba(79,143,168,0.18);}
+  .ocrword.betrag-guess{border-color:rgba(92,138,92,0.9);background:rgba(92,138,92,0.18);}
+  .ocrpopover{position:absolute;transform:translate(-50%,-100%);background:#132433;border:1px solid var(--border-strong);border-radius:8px;padding:5px;display:flex;gap:5px;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,0.5);white-space:nowrap;}
+  .ocrpopover button{border:none;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:600;cursor:pointer;}
+  .ocrpopover .toDate{background:var(--buero);color:#fff;}
+  .ocrpopover .toBetrag{background:var(--green);color:#fff;}
+  .ocrstatus{font-size:11px;color:var(--muted2);text-align:center;padding:8px 0;}
+  .ocrscanline{position:absolute;left:0;right:0;height:2px;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:scandown 1.6s linear infinite;}
+  @keyframes scandown{0%{top:0;}100%{top:100%;}}
+
+  /* --- Auslagen-Formularfelder --- */
+  .fieldlabel{font-size:10.5px;color:var(--muted2);font-family:'IBM Plex Mono',monospace;letter-spacing:0.4px;margin-bottom:5px;display:block;}
+  .fieldgroup{margin-bottom:14px;}
+  input[type=date]{background:rgba(15,27,38,0.8);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;font-family:inherit;width:100%;}
+  select.bvselect{background:rgba(15,27,38,0.8);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;font-family:inherit;width:100%;}
+  textarea{background:rgba(15,27,38,0.8);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;font-family:inherit;width:100%;resize:vertical;min-height:52px;}
+  .betragrow{display:flex;align-items:center;gap:6px;}
+  .betragrow input{flex:1;font-size:16px;font-weight:700;}
+  .betragrow .eurosign{font-size:15px;color:var(--muted2);font-weight:700;}
+  .bewirtungfields{border-left:2px solid var(--sonderurlaub);padding-left:10px;margin-top:4px;}
+
+  /* --- Auslagenliste --- */
+  .expenseitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .expenseitem:last-child{border-bottom:none;}
+  .expensethumb{width:42px;height:42px;border-radius:7px;object-fit:cover;flex-shrink:0;background:#0A141C;border:1px solid var(--border-strong);}
+  .expensemain{flex:1;min-width:0;}
+  .expensetop{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;}
+  .expensesub{font-size:11px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;}
+  .expenseamount{font-size:14px;font-weight:700;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+  .expenseedit{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px;}
+  .expensetotal{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="headwrap">
+    <div class="logo">🏗️</div>
+    <div>
+      <div class="title">Kostenverteilung</div>
+      <div class="subtitle mono">TAGESERFASSUNG · BAUVORHABEN</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" style="padding:12px 16px;">
+    <div class="settingsrow">
+      <label class="mono">Name:</label>
+      <input type="text" id="nameInput" placeholder="Vorname Nachname" style="flex:1;">
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px 16px;">
+    <div class="settingsrow" style="margin-bottom:8px;">
+      <label class="mono">🔔 Erinnerung:</label>
+      <input type="time" id="reminderTime" style="width:110px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted2);margin-left:auto;cursor:pointer;">
+        <input type="checkbox" id="reminderEnabled"> aktiv
+      </label>
+    </div>
+    <div id="reminderInfo" style="font-size:10.5px;color:var(--muted2);line-height:1.5;"></div>
+  </div>
+
+  <div class="card" id="reminderBanner" style="display:none; border-color:var(--feiertag); padding:12px 16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:13px;">🔔 Vergiss nicht, deine heutige Kostenverteilung einzutragen!</div>
+      <div style="display:flex;gap:6px;">
+        <button id="reminderGoToday" class="clearbtn" style="padding:6px 10px;font-size:12px;">Heute öffnen</button>
+        <button id="reminderDismiss" class="clearbtn" style="padding:6px 10px;font-size:12px;">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="navrow">
+    <button class="navbtn" id="prevMonth">‹</button>
+    <div>
+      <div class="monthlabel" id="monthLabel"></div>
+      <div class="monthsub mono" id="monthSub"></div>
+    </div>
+    <button class="navbtn" id="nextMonth">›</button>
+  </div>
+
+  <div class="maintabs">
+    <button id="tabBtnKosten" class="active">📊 Kostenverteilung</button>
+    <button id="tabBtnAuslagen">🧾 Auslagen</button>
+  </div>
+
+  <div id="panelKosten">
+
+  <div class="card calcard">
+    <div class="weekrow">
+      <div class="weekday">Mo</div><div class="weekday">Di</div><div class="weekday">Mi</div>
+      <div class="weekday">Do</div><div class="weekday">Fr</div><div class="weekday">Sa</div><div class="weekday">So</div>
+    </div>
+    <div class="daysgrid" id="daysGrid"></div>
+    <div class="legend">
+      <div class="legenditem"><span class="legenddot" style="background:var(--buero)"></span><span class="legendtext mono">Büro</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--baustelle)"></span><span class="legendtext mono">Baustelle</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--home)"></span><span class="legendtext mono">Homeoffice</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--urlaub)"></span><span class="legendtext mono">Urlaub</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--sonderurlaub)"></span><span class="legendtext mono">Sonderurlaub</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--krank)"></span><span class="legendtext mono">Krank</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--feiertag)"></span><span class="legendtext mono">Feiertag (Bayern)</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dayheader">
+      📅 <span id="dayHeaderDate"></span>
+      <span class="mono" id="dayHeaderWeekday" style="color:var(--muted2);font-size:11.5px;font-weight:400;"></span>
+    </div>
+    <div class="holidaynote mono" id="holidayNote"></div>
+
+    <div class="daytyperow" id="dayTypeRow"></div>
+
+    <div id="splitsSection">
+      <div class="sectionlabel">
+        <div class="mono">ARBEITSLEISTUNG NACH BAUVORHABEN</div>
+        <button class="addbtn" id="toggleAddProject">＋ Neu</button>
+      </div>
+
+      <div class="addprojectrow" id="addProjectRow" style="display:none;">
+        <input type="text" id="newProjectNumber" placeholder="BV-Nr." class="numinput">
+        <input type="text" id="newProjectInput" placeholder="Titel des Bauvorhabens">
+        <button class="navbtn" id="confirmAddProject" style="background:var(--accent);border-color:var(--accent);color:var(--bg);">✓</button>
+      </div>
+
+      <div id="projectsList"></div>
+
+      <div class="sumrow" id="sumRow" style="display:none;">
+        <span class="sumlabel mono">SUMME</span>
+        <span class="sumvalue mono" id="sumValue">0%</span>
+      </div>
+    </div>
+
+    <div id="noSplitsNote" class="infonote" style="display:none;"></div>
+
+    <div class="btnrow">
+      <button class="savebtn" id="saveDayBtn">Tag speichern</button>
+      <button class="clearbtn" id="clearDayBtn" style="display:none;">🗑</button>
+    </div>
+  </div>
+
+  <div class="exportbtns">
+    <button class="previewbtn" id="previewBtn">👁 Vorschau</button>
+    <button class="downloadbtn" id="downloadBtn">⬇ Excel herunterladen</button>
+  </div>
+
+  <div class="footnote mono">
+    Daten werden lokal in diesem Browser gespeichert (localStorage).<br>
+    Feiertage automatisch nach bayerischem Feiertagskalender ermittelt – Mariä Himmelfahrt gilt nur in überwiegend katholischen Gemeinden, bitte bei Bedarf manuell korrigieren.
+  </div>
+
+  </div> <!-- /panelKosten -->
+
+  <div id="panelAuslagen" style="display:none;">
+
+    <div class="card" id="captureCard">
+      <input type="file" id="receiptCapture" accept="image/*" capture="environment" style="display:none;">
+      <button class="capturebtn" id="captureBtn"><span class="icon">📷</span> Beleg fotografieren</button>
+      <div class="hint" style="font-size:10.5px;color:var(--muted2);text-align:center;margin-top:8px;">
+        Öffnet direkt die Gerätekamera. Danach automatische Texterkennung – Datum und Betrag lassen sich per Antippen auf dem Foto übernehmen.
+      </div>
+    </div>
+
+    <div class="card" id="expenseFormCard" style="display:none;">
+      <div class="dayheader" style="margin-bottom:12px;">
+        🧾 <span id="expenseFormTitle">Neue Auslage</span>
+      </div>
+
+      <div id="receiptPreviewWrapOuter"></div>
+      <div id="ocrStatusEl"></div>
+
+      <div class="fieldgroup">
+        <span class="fieldlabel">KATEGORIE</span>
+        <div class="katrow" id="katRow"></div>
+      </div>
+
+      <div class="fieldgroup">
+        <span class="fieldlabel">DATUM</span>
+        <input type="date" id="ausgDatum">
+      </div>
+
+      <div class="fieldgroup">
+        <span class="fieldlabel">BETRAG</span>
+        <div class="betragrow">
+          <span class="eurosign">€</span>
+          <input type="number" id="ausgBetrag" step="0.01" min="0" placeholder="0,00">
+        </div>
+      </div>
+
+      <div class="fieldgroup">
+        <span class="fieldlabel">BAUVORHABEN</span>
+        <select class="bvselect" id="ausgBv">
+          <option value="">– kein Bauvorhaben –</option>
+        </select>
+      </div>
+
+      <div class="fieldgroup" id="bewirtungFields" style="display:none;">
+        <div class="bewirtungfields">
+          <span class="fieldlabel">TEILNEHMER (optional)</span>
+          <input type="text" id="ausgTeilnehmer" placeholder="z.B. Max Mustermann, Fa. Beispiel GmbH" style="margin-bottom:10px;">
+          <span class="fieldlabel">ANLASS (optional)</span>
+          <input type="text" id="ausgAnlass" placeholder="z.B. Baubesprechung">
+        </div>
+      </div>
+
+      <div class="fieldgroup">
+        <span class="fieldlabel">BEGRÜNDUNG</span>
+        <textarea id="ausgBegruendung" placeholder="Kurze Begründung der Auslage"></textarea>
+      </div>
+
+      <div class="btnrow">
+        <button class="savebtn" id="saveExpenseBtn">Auslage speichern</button>
+        <button class="clearbtn" id="cancelExpenseBtn">✕</button>
+      </div>
+      <button class="clearbtn" id="deleteExpenseBtn" style="display:none;width:100%;margin-top:8px;">🗑 Auslage löschen</button>
+    </div>
+
+    <div class="card">
+      <div class="sectionlabel">
+        <div class="mono">AUSLAGEN · <span id="expenseMonthLabel"></span></div>
+      </div>
+      <div id="expensesList"></div>
+      <div class="expensetotal">
+        <span>Summe</span>
+        <span id="expensesTotalValue">0,00 €</span>
+      </div>
+    </div>
+
+    <div class="exportbtns">
+      <button class="downloadbtn" id="downloadExpensesPdfBtn" style="flex:1;">⬇ Auslagen als PDF</button>
+    </div>
+
+    <div class="footnote mono">
+      Belegfotos werden komprimiert lokal in diesem Browser gespeichert (localStorage). Texterkennung läuft vollständig im Browser (Tesseract.js), es werden keine Bilder an einen Server gesendet.
+    </div>
+
+  </div> <!-- /panelAuslagen -->
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modaloverlay" id="previewModal">
+  <div class="modal">
+    <div class="modalhead">
+      <div class="modaltitle" id="previewTitle">Vorschau</div>
+      <button class="modalclose" id="closePreview">✕</button>
+    </div>
+    <div class="modalbody" id="previewTableWrap"></div>
+    <div class="previewlegend">
+      U = Urlaub · SU = Sonderurlaub · K = Krank · F = Feiertag<br>
+      Nebenkosten (Abwesenheit vom Wohnort): 1 = über 8 Std. ohne Übernachtung · 2 = 14–24 Std. mit Übernachtung · 3 = über 24 Std. · 4 = Büro<br>
+      Summenspalte "Summe" je Tag = Prozent. Unterste Summenzeile = Stunden (Mo–Do 8,5 Std., Fr 6 Std. Basis, anteilig).
+    </div>
+    <div class="modalfoot">
+      <button class="downloadbtn" style="width:100%;" id="downloadFromPreview">⬇ Als Excel herunterladen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const WEEKDAYS = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+
+const DAY_TYPES = [
+  { id:"buero", label:"Büro", icon:"🏢", hex:"var(--buero)", hasSplits:true, nebenkosten:4, commute:"buero" },
+  { id:"baustelle", label:"Baustelle", icon:"⛑️", hex:"var(--baustelle)", hasSplits:true, nebenkosten:1, commute:"baustelle" },
+  { id:"homeoffice", label:"Homeoffice", icon:"🏠", hex:"var(--home)", hasSplits:true, nebenkosten:null, commute:null },
+  { id:"urlaub", label:"Urlaub", icon:"🌴", hex:"var(--urlaub)", hasSplits:false, column:"U", commute:null },
+  { id:"sonderurlaub", label:"Sonderurlaub", icon:"⭐", hex:"var(--sonderurlaub)", hasSplits:false, column:"SU", commute:null },
+  { id:"krank", label:"Krank", icon:"🤒", hex:"var(--krank)", hasSplits:false, column:"K", commute:null },
+];
+function typeById(id){ return DAY_TYPES.find(t => t.id === id); }
+
+function pad(n){ return String(n).padStart(2,"0"); }
+function dateKey(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+function isWeekend(y,m,d){ const wd=new Date(y,m,d).getDay(); return wd===0||wd===6; }
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+// --- Bavarian holiday calculation ---
+function easterSunday(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4;
+  const f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month-1, day);
+}
+function addDays(date,n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
+const holidayCache = {};
+function bavarianHolidays(year){
+  if (holidayCache[year]) return holidayCache[year];
+  const easter = easterSunday(year);
+  const list = [
+    [new Date(year,0,1), "Neujahr"],
+    [new Date(year,0,6), "Heilige Drei Könige"],
+    [addDays(easter,-2), "Karfreitag"],
+    [addDays(easter,1), "Ostermontag"],
+    [new Date(year,4,1), "Tag der Arbeit"],
+    [addDays(easter,39), "Christi Himmelfahrt"],
+    [addDays(easter,50), "Pfingstmontag"],
+    [addDays(easter,60), "Fronleichnam"],
+    [new Date(year,7,15), "Mariä Himmelfahrt*"],
+    [new Date(year,9,3), "Tag der Deutschen Einheit"],
+    [new Date(year,10,1), "Allerheiligen"],
+    [new Date(year,11,25), "1. Weihnachtsfeiertag"],
+    [new Date(year,11,26), "2. Weihnachtsfeiertag"],
+  ];
+  const map = {};
+  list.forEach(([d,name]) => { map[dateKey(d.getFullYear(),d.getMonth(),d.getDate())] = name; });
+  holidayCache[year] = map;
+  return map;
+}
+function holidayName(y,m,d){
+  return bavarianHolidays(y)[dateKey(y,m,d)] || null;
+}
+
+// --- State ---
+let projects = JSON.parse(localStorage.getItem("kv_projects") || "[]");
+let entries = JSON.parse(localStorage.getItem("kv_entries") || "{}");
+let settings = JSON.parse(localStorage.getItem("kv_settings") || "{}");
+const today = new Date();
+let viewY = today.getFullYear();
+let viewM = today.getMonth();
+let selectedDay = today.getDate();
+let draftType = null;
+let draftSplits = {};
+
+function saveProjects(){ localStorage.setItem("kv_projects", JSON.stringify(projects)); }
+function saveEntries(){ localStorage.setItem("kv_entries", JSON.stringify(entries)); }
+function saveSettings(){ localStorage.setItem("kv_settings", JSON.stringify(settings)); }
+
+function showToast(msg, kind){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + (kind === "error" ? "error" : "ok");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => { t.className = "toast"; }, 2200);
+}
+
+function currentKey(){ return dateKey(viewY, viewM, selectedDay); }
+
+function loadDraftFromEntry(){
+  const e = entries[currentKey()];
+  draftType = e ? e.type : null;
+  draftSplits = e ? { ...e.splits } : {};
+}
+
+// --- Name input ---
+const nameInput = document.getElementById("nameInput");
+nameInput.value = settings.name || "";
+nameInput.oninput = () => { settings.name = nameInput.value; saveSettings(); };
+
+// --- Reminder ---
+const reminderTimeInput = document.getElementById("reminderTime");
+const reminderEnabledInput = document.getElementById("reminderEnabled");
+reminderTimeInput.value = settings.reminderTime || "17:00";
+reminderEnabledInput.checked = !!settings.reminderEnabled;
+
+function updateReminderInfo(){
+  const info = document.getElementById("reminderInfo");
+  if (!("Notification" in window)){
+    info.textContent = "Push-Benachrichtigungen werden von diesem Browser/Kontext nicht unterstützt (z.B. bei lokal geöffneten Dateien). Du bekommst stattdessen einen Hinweis-Banner, sobald du die App nach der Uhrzeit öffnest und der heutige Tag noch fehlt.";
+  } else if (Notification.permission === "denied") {
+    info.textContent = "Benachrichtigungen sind blockiert. Du bekommst stattdessen einen Hinweis-Banner beim Öffnen der App.";
+  } else if (Notification.permission === "granted") {
+    info.textContent = "Push-Benachrichtigung aktiv – funktioniert nur, solange diese Seite in einem Browser-Tab geöffnet ist (kein echter Hintergrunddienst).";
+  } else {
+    info.textContent = "Beim Aktivieren wirst du um Erlaubnis für Benachrichtigungen gebeten. Ohne Erlaubnis (oder bei geschlossenem Tab) erscheint stattdessen ein Hinweis-Banner beim nächsten Öffnen.";
+  }
+}
+updateReminderInfo();
+
+reminderTimeInput.onchange = () => { settings.reminderTime = reminderTimeInput.value; saveSettings(); };
+reminderEnabledInput.onchange = () => {
+  settings.reminderEnabled = reminderEnabledInput.checked;
+  saveSettings();
+  if (settings.reminderEnabled && "Notification" in window && Notification.permission === "default"){
+    Notification.requestPermission().then(updateReminderInfo);
+  } else {
+    updateReminderInfo();
+  }
+};
+
+function showReminderBanner(){
+  document.getElementById("reminderBanner").style.display = "block";
+}
+document.getElementById("reminderDismiss").onclick = () => {
+  document.getElementById("reminderBanner").style.display = "none";
+};
+document.getElementById("reminderGoToday").onclick = () => {
+  const now = new Date();
+  viewY = now.getFullYear(); viewM = now.getMonth(); selectedDay = now.getDate();
+  loadDraftFromEntry(); renderAll();
+  document.getElementById("reminderBanner").style.display = "none";
+  window.scrollTo({ top:0, behavior:"smooth" });
+};
+
+function checkReminder(){
+  if (!settings.reminderEnabled || !settings.reminderTime) return;
+  const now = new Date();
+  const [rh, rm] = settings.reminderTime.split(":").map(Number);
+  const reminderMinutes = rh * 60 + rm;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayKey = dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  if (entries[todayKey]) return; // heute schon erfasst, keine Erinnerung nötig
+  if (nowMinutes < reminderMinutes) return;
+
+  const alreadyNotifiedToday = settings.lastReminderDate === todayKey;
+  if (!alreadyNotifiedToday){
+    settings.lastReminderDate = todayKey;
+    saveSettings();
+    if ("Notification" in window && Notification.permission === "granted"){
+      try { new Notification("Kostenverteilung", { body: "Vergiss nicht, deine heutige Kostenverteilung einzutragen!" }); } catch(e){ /* ignore */ }
+    }
+  }
+  showReminderBanner();
+}
+setInterval(checkReminder, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminder(); });
+
+// --- Render calendar ---
+function renderCalendar(){
+  document.getElementById("monthLabel").textContent = `${MONTHS[viewM]} ${viewY}`;
+  const dim = daysInMonth(viewY, viewM);
+  let filled = 0;
+  for (let d=1; d<=dim; d++){ if (entries[dateKey(viewY,viewM,d)]) filled++; }
+  document.getElementById("monthSub").textContent = `${filled}/${dim} Tage erfasst`;
+
+  const firstWeekday = (new Date(viewY, viewM, 1).getDay() + 6) % 7;
+  const grid = document.getElementById("daysGrid");
+  grid.innerHTML = "";
+  for (let i=0; i<firstWeekday; i++){
+    grid.appendChild(document.createElement("div"));
+  }
+  for (let d=1; d<=dim; d++){
+    const cell = document.createElement("button");
+    const key = dateKey(viewY, viewM, d);
+    const e = entries[key];
+    const dt = e ? typeById(e.type) : null;
+    const hol = holidayName(viewY, viewM, d);
+    cell.className = "daycell" + (d === selectedDay ? " selected" : "") + (isWeekend(viewY,viewM,d) ? " weekend" : "") + (hol && !e ? " holiday" : "");
+    if (dt) cell.style.background = `color-mix(in srgb, ${dt.hex} 20%, transparent)`;
+    cell.textContent = d;
+    if (dt){
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = dt.hex;
+      cell.appendChild(dot);
+    } else if (hol){
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = "var(--feiertag)";
+      cell.appendChild(dot);
+    }
+    cell.onclick = () => { selectedDay = d; loadDraftFromEntry(); renderAll(); };
+    grid.appendChild(cell);
+  }
+}
+
+// --- Render day editor ---
+function renderDayEditor(){
+  document.getElementById("dayHeaderDate").textContent = `${pad(selectedDay)}.${pad(viewM+1)}.${viewY}`;
+  document.getElementById("dayHeaderWeekday").textContent = WEEKDAYS[(new Date(viewY, viewM, selectedDay).getDay() + 6) % 7];
+
+  const hol = holidayName(viewY, viewM, selectedDay);
+  const holNote = document.getElementById("holidayNote");
+  if (hol){
+    holNote.style.display = "block";
+    holNote.textContent = `Gesetzlicher Feiertag (Bayern): ${hol}. Wird beim Export automatisch mit F: 100% gefüllt, sofern kein Eintrag vorliegt.`;
+  } else {
+    holNote.style.display = "none";
+  }
+
+  const dtRow = document.getElementById("dayTypeRow");
+  dtRow.innerHTML = "";
+  DAY_TYPES.forEach(t => {
+    const btn = document.createElement("button");
+    const active = draftType === t.id;
+    btn.className = "daytypebtn";
+    if (active){
+      btn.style.border = `1.5px solid ${t.hex}`;
+      btn.style.background = `color-mix(in srgb, ${t.hex} 15%, transparent)`;
+      btn.style.color = "#fff";
+    }
+    btn.innerHTML = `<span class="icon">${t.icon}</span>${t.label}`;
+    btn.onclick = () => { draftType = t.id; if (!t.hasSplits) draftSplits = {}; renderDayEditor(); };
+    dtRow.appendChild(btn);
+  });
+
+  const activeType = draftType ? typeById(draftType) : null;
+  const showSplits = !activeType || activeType.hasSplits;
+  document.getElementById("splitsSection").style.display = showSplits ? "block" : "none";
+  const noSplitsNote = document.getElementById("noSplitsNote");
+  if (activeType && !activeType.hasSplits){
+    noSplitsNote.style.display = "block";
+    noSplitsNote.textContent = `${activeType.label}: wird beim Export mit 100% in Spalte "${activeType.column}:" eingetragen. Keine Projektaufteilung nötig.`;
+  } else {
+    noSplitsNote.style.display = "none";
+  }
+
+  if (showSplits){
+    const list = document.getElementById("projectsList");
+    list.innerHTML = "";
+    if (projects.length === 0){
+      list.innerHTML = `<div class="emptynote">Noch keine Bauvorhaben angelegt. Mit "＋ Neu" hinzufügen.</div>`;
+    }
+    projects.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "projectrow";
+      row.innerHTML = `
+        <div class="projectname">${escapeHtml(p.name)} ${p.number ? `<span class="projectnum mono">#${escapeHtml(p.number)}</span>` : ""}</div>
+        <input type="number" min="0" max="100" class="pctinput mono" placeholder="0" value="${draftSplits[p.id] ?? ""}">
+        <span class="pctsign mono">%</span>
+        <button class="delbtn">🗑</button>
+      `;
+      const input = row.querySelector("input");
+      input.oninput = () => {
+        let v = input.value === "" ? "" : Math.max(0, Math.min(100, Number(input.value)));
+        draftSplits[p.id] = v;
+        renderSum();
+      };
+      row.querySelector(".delbtn").onclick = () => {
+        projects = projects.filter(x => x.id !== p.id);
+        saveProjects();
+        Object.keys(entries).forEach(k => {
+          if (entries[k].splits && entries[k].splits[p.id] !== undefined) delete entries[k].splits[p.id];
+        });
+        saveEntries();
+        delete draftSplits[p.id];
+        renderAll();
+      };
+      list.appendChild(row);
+    });
+    document.getElementById("sumRow").style.display = projects.length > 0 ? "flex" : "none";
+    renderSum();
+  }
+
+  document.getElementById("clearDayBtn").style.display = entries[currentKey()] ? "block" : "none";
+}
+
+function renderSum(){
+  const sum = Object.values(draftSplits).reduce((a,b) => a + (Number(b)||0), 0);
+  const el = document.getElementById("sumValue");
+  el.textContent = sum + "%";
+  el.style.color = (sum === 100 || sum === 0) ? "var(--green)" : "var(--accent)";
+}
+
+function renderAll(){ renderCalendar(); renderDayEditor(); renderExpensesList(); }
+
+// --- Event handlers ---
+document.getElementById("prevMonth").onclick = () => {
+  viewM--; if (viewM < 0){ viewM = 11; viewY--; }
+  selectedDay = 1; loadDraftFromEntry(); renderAll();
+};
+document.getElementById("nextMonth").onclick = () => {
+  viewM++; if (viewM > 11){ viewM = 0; viewY++; }
+  selectedDay = 1; loadDraftFromEntry(); renderAll();
+};
+
+document.getElementById("toggleAddProject").onclick = () => {
+  const row = document.getElementById("addProjectRow");
+  row.style.display = row.style.display === "none" ? "flex" : "none";
+  if (row.style.display === "flex") document.getElementById("newProjectNumber").focus();
+};
+
+function addProject(){
+  const numberInput = document.getElementById("newProjectNumber");
+  const nameInputEl = document.getElementById("newProjectInput");
+  const number = numberInput.value.trim();
+  const name = nameInputEl.value.trim();
+  if (!name){ showToast("Bitte Titel angeben", "error"); return; }
+  if (projects.some(p => p.name.toLowerCase() === name.toLowerCase())){
+    showToast("Bauvorhaben existiert bereits", "error");
+    return;
+  }
+  projects.push({ id: "p_" + Date.now(), number, name });
+  saveProjects();
+  numberInput.value = ""; nameInputEl.value = "";
+  document.getElementById("addProjectRow").style.display = "none";
+  showToast("Bauvorhaben hinzugefügt");
+  renderDayEditor();
+}
+document.getElementById("confirmAddProject").onclick = addProject;
+["newProjectNumber","newProjectInput"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") addProject(); });
+});
+
+document.getElementById("saveDayBtn").onclick = () => {
+  if (!draftType){ showToast("Bitte Tagestyp wählen", "error"); return; }
+  const activeType = typeById(draftType);
+  if (activeType.hasSplits){
+    const cleaned = {};
+    Object.entries(draftSplits).forEach(([k,v]) => { if (Number(v) > 0) cleaned[k] = Number(v); });
+    const sum = Object.values(cleaned).reduce((a,b) => a+b, 0);
+    if (Object.keys(cleaned).length > 0 && sum !== 100){
+      showToast(`Summe muss 100% sein (aktuell ${sum}%)`, "error");
+      return;
+    }
+    entries[currentKey()] = { type: draftType, splits: cleaned };
+  } else {
+    entries[currentKey()] = { type: draftType, splits: {} };
+  }
+  saveEntries();
+  showToast("Tag gespeichert");
+  renderAll();
+};
+
+document.getElementById("clearDayBtn").onclick = () => {
+  delete entries[currentKey()];
+  saveEntries();
+  draftType = null; draftSplits = {};
+  showToast("Eintrag gelöscht");
+  renderAll();
+};
+
+// --- Stunden-Basis pro Wochentag (für die Summenzeile) ---
+function dailyHoursBasis(weekdayAbbrev){ return weekdayAbbrev === "Fr" ? 6 : 8.5; }
+function round1(n){ return Math.round(n * 100) / 100; }
+
+// --- Export data model ---
+// Wichtig: die Summenspalte (pro Tag, "Summe") bleibt eine Prozent-Summe (i.d.R. 100).
+// Die Summenzeile (Monats-Gesamt je Spalte, unten) rechnet dagegen in Stunden um:
+// Mo-Do = 8,5 Std. Basis, Fr = 6 Std. Basis, jeweils anteilig nach Prozentsatz.
+function buildMonthData(){
+  const dim = daysInMonth(viewY, viewM);
+  const rows = [];
+  const totals = { U:0, SU:0, K:0, F:0, summe:0, neben:[0,0,0,0], fahrtBau:0, fahrtBuero:0, projects:{} };
+  projects.forEach(p => totals.projects[p.id] = 0);
+
+  for (let d=1; d<=dim; d++){
+    const key = dateKey(viewY, viewM, d);
+    const e = entries[key];
+    const wd = new Date(viewY, viewM, d).getDay();
+    const weekend = wd === 0 || wd === 6;
+    const hol = holidayName(viewY, viewM, d);
+    const weekdayAbbr = WEEKDAYS[(wd+6)%7];
+    const basis = dailyHoursBasis(weekdayAbbr);
+    const row = { day:d, weekday:weekdayAbbr, weekend, splits:{}, U:"", SU:"", K:"", F:"", summe:"", neben:[false,false,false,false], fahrtBau:false, fahrtBuero:false, holidayName: hol };
+
+    if (e){
+      const t = typeById(e.type);
+      if (t.hasSplits){
+        let sum = 0;
+        projects.forEach(p => {
+          const v = e.splits[p.id];
+          if (v){ row.splits[p.id] = v; sum += Number(v); totals.projects[p.id] += (Number(v)/100) * basis; }
+        });
+        row.summe = sum || "";
+        if (t.nebenkosten){ row.neben[t.nebenkosten-1] = true; totals.neben[t.nebenkosten-1]++; }
+      } else {
+        row[t.column] = 100;
+        row.summe = 100;
+        totals[t.column] += basis;
+      }
+      if (t.commute === "baustelle"){ row.fahrtBau = true; totals.fahrtBau++; }
+      if (t.commute === "buero"){ row.fahrtBuero = true; totals.fahrtBuero++; }
+      if (Number(row.summe) > 0) totals.summe += basis;
+    } else if (hol && !weekend){
+      row.F = 100; row.summe = 100;
+      totals.F += basis; totals.summe += basis;
+    }
+    rows.push(row);
+  }
+  projects.forEach(p => totals.projects[p.id] = round1(totals.projects[p.id]));
+  totals.U = round1(totals.U); totals.SU = round1(totals.SU); totals.K = round1(totals.K); totals.F = round1(totals.F);
+  totals.summe = round1(totals.summe);
+  return { rows, totals, dim };
+}
+
+const GREY_FILL = { type:"pattern", pattern:"solid", fgColor:{ argb:"FFD9D9D9" } };
+const HEADER_FILL = { type:"pattern", pattern:"solid", fgColor:{ argb:"FFEFEFEF" } };
+const TOTAL_FILL = { type:"pattern", pattern:"solid", fgColor:{ argb:"FFF3DCC7" } };
+const THIN_BORDER = { top:{style:"thin",color:{argb:"FFBFBFBF"}}, left:{style:"thin",color:{argb:"FFBFBFBF"}}, bottom:{style:"thin",color:{argb:"FFBFBFBF"}}, right:{style:"thin",color:{argb:"FFBFBFBF"}} };
+
+async function downloadExcel(){
+  const { rows, totals } = buildMonthData();
+  const name = settings.name || "";
+  const nP = projects.length;
+
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet(`${MONTHS[viewM]} ${viewY}`.slice(0,31));
+
+  ws.addRow(["Monat:", viewM+1, "", "Jahr:", viewY]);
+  ws.addRow(["Name:", name, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "gepr. Teamleiter"]);
+  ws.addRow([]);
+
+  const h1 = ["Tag"]; projects.forEach(() => h1.push("BV:")); h1.push("U:","SU:","K:","F:","Summe","", "Fahrt","Fahrt","", "Nebenkosten","","","");
+  const h2 = [""]; projects.forEach(p => h2.push(p.name)); h2.push("","","","","",""); h2.push("Baustelle","Büro",""); h2.push("1","2","3","4");
+  const h3 = [""]; projects.forEach(p => h3.push(p.number || "")); h3.push("","","","","",""); h3.push("","",""); h3.push("","","","");
+  const headerRow1 = ws.addRow(h1);
+  const headerRow2 = ws.addRow(h2);
+  const headerRow3 = ws.addRow(h3);
+  [headerRow1, headerRow2, headerRow3].forEach(r => {
+    r.eachCell({ includeEmpty:true }, cell => {
+      cell.fill = HEADER_FILL;
+      cell.font = { bold:true, size:10 };
+      cell.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
+      cell.border = THIN_BORDER;
+    });
+  });
+  const fahrtStartCol = 1 + nP + 4 + 1 + 1 + 1; // 1-indexed: Tag+BV+U,SU,K,F+Summe+spacer -> Fahrt Baustelle
+  const nebenStartCol = fahrtStartCol + 2 + 1; // +2 Fahrt-Spalten +1 spacer
+  ws.mergeCells(headerRow1.number, fahrtStartCol, headerRow1.number, fahrtStartCol);
+  ws.mergeCells(headerRow1.number, fahrtStartCol+1, headerRow1.number, fahrtStartCol+1);
+  ws.mergeCells(headerRow1.number, nebenStartCol, headerRow1.number, nebenStartCol+3);
+
+  rows.forEach(r => {
+    const line = [r.day];
+    projects.forEach(p => line.push(r.splits[p.id] ?? ""));
+    line.push(r.U || "", r.SU || "", r.K || "", r.F || "", r.summe || "", "");
+    line.push(r.fahrtBau?"x":"", r.fahrtBuero?"x":"", "");
+    line.push(r.neben[0]?"x":"", r.neben[1]?"x":"", r.neben[2]?"x":"", r.neben[3]?"x":"");
+    const excelRow = ws.addRow(line);
+    excelRow.eachCell({ includeEmpty:true }, cell => {
+      cell.border = THIN_BORDER;
+      cell.alignment = { horizontal:"center" };
+      if (r.weekend) cell.fill = GREY_FILL;
+    });
+  });
+
+  const totalLine = ["Summe"];
+  projects.forEach(p => totalLine.push(totals.projects[p.id] || ""));
+  totalLine.push(totals.U||"", totals.SU||"", totals.K||"", totals.F||"", totals.summe||"", "");
+  totalLine.push(totals.fahrtBau||"", totals.fahrtBuero||"", "");
+  totalLine.push(totals.neben[0]||"", totals.neben[1]||"", totals.neben[2]||"", totals.neben[3]||"");
+  const totalRow = ws.addRow(totalLine);
+  totalRow.eachCell({ includeEmpty:true }, cell => {
+    cell.fill = TOTAL_FILL;
+    cell.font = { bold:true };
+    cell.alignment = { horizontal:"center" };
+    cell.border = THIN_BORDER;
+  });
+
+  ws.addRow([]);
+  ws.addRow(["Erläuterungen:", "U = Urlaub    SU = Sonderurlaub    K = Krank    F = Feiertag"]);
+  ws.addRow(["Nebenkostenschlüssel:", "Abwesenheit vom Wohnort — 1 = über 8 Std. ohne Übernachtung, 2 = 14-24 Std. mit Übernachtung, 3 = über 24 Std., 4 = Büro"]);
+  ws.addRow(["Fahrt Baustelle/Büro:", "x = an diesem Tag Fahrt zur Baustelle bzw. ins Büro (aus Tagestyp abgeleitet)"]);
+  ws.addRow(["Summenzeile in Stunden:", "Mo-Do = 8,5 Std. Basis · Fr = 6 Std. Basis, anteilig nach Prozentangabe (Summenspalte je Tag bleibt in %)"]);
+  ws.addRow([]);
+  ws.addRow(["Summe 1.:", totals.neben[0]]);
+  ws.addRow(["Summe 2.:", totals.neben[1]]);
+  ws.addRow(["Summe 3.:", totals.neben[2]]);
+  ws.addRow(["Summe 4.:", totals.neben[3]]);
+  ws.addRow(["Fahrten Baustelle:", totals.fahrtBau]);
+  ws.addRow(["Fahrten Büro:", totals.fahrtBuero]);
+
+  ws.getColumn(1).width = 6;
+  projects.forEach((p,idx) => { ws.getColumn(2+idx).width = Math.max(10, p.name.length+2); });
+  const afterProj = 2+nP;
+  [0,1,2,3].forEach(i => ws.getColumn(afterProj+i).width = 6);
+  ws.getColumn(afterProj+4).width = 8;
+  ws.getColumn(afterProj+5).width = 2;
+  ws.getColumn(afterProj+6).width = 9;
+  ws.getColumn(afterProj+7).width = 8;
+  ws.getColumn(afterProj+8).width = 2;
+  [0,1,2,3].forEach(i => ws.getColumn(afterProj+9+i).width = 4);
+
+  try {
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Kostenverteilung_${MONTHS[viewM]}_${viewY}.xlsx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast("Excel-Datei heruntergeladen");
+  } catch(err){
+    console.error(err);
+    showToast("Download fehlgeschlagen", "error");
+  }
+}
+document.getElementById("downloadBtn").onclick = downloadExcel;
+document.getElementById("downloadFromPreview").onclick = downloadExcel;
+
+// --- Preview modal ---
+function showPreview(){
+  const { rows, totals } = buildMonthData();
+  const wrap = document.getElementById("previewTableWrap");
+  document.getElementById("previewTitle").textContent = `Vorschau · ${MONTHS[viewM]} ${viewY}`;
+
+  let html = "<table class='preview'><thead><tr><th class='tagcol'>Tag</th>";
+  projects.forEach(p => html += `<th>BV: ${escapeHtml(p.name)}${p.number?`<br>${escapeHtml(p.number)}`:""}</th>`);
+  html += "<th>U:</th><th>SU:</th><th>K:</th><th>F:</th><th>Summe</th><th>Fahrt<br>Baustelle</th><th>Fahrt<br>Büro</th><th>1</th><th>2</th><th>3</th><th>4</th></tr></thead><tbody>";
+
+  rows.forEach(r => {
+    html += `<tr class="${r.weekend ? 'weekend' : ''}">`;
+    html += `<td class="tagcol">${r.day} <span style="color:var(--muted2)">${r.weekday}</span></td>`;
+    projects.forEach(p => html += `<td>${r.splits[p.id] ?? ""}</td>`);
+    html += `<td>${r.U||""}</td><td>${r.SU||""}</td><td>${r.K||""}</td><td>${r.F||""}</td><td>${r.summe||""}</td>`;
+    html += `<td>${r.fahrtBau?"x":""}</td><td>${r.fahrtBuero?"x":""}</td>`;
+    html += `<td>${r.neben[0]?"x":""}</td><td>${r.neben[1]?"x":""}</td><td>${r.neben[2]?"x":""}</td><td>${r.neben[3]?"x":""}</td>`;
+    html += "</tr>";
+  });
+
+  html += `<tr class="totalrow"><td>Summe</td>`;
+  projects.forEach(p => html += `<td>${totals.projects[p.id]||""}</td>`);
+  html += `<td>${totals.U||""}</td><td>${totals.SU||""}</td><td>${totals.K||""}</td><td>${totals.F||""}</td><td>${totals.summe||""}</td>`;
+  html += `<td>${totals.fahrtBau||""}</td><td>${totals.fahrtBuero||""}</td>`;
+  html += `<td>${totals.neben[0]||""}</td><td>${totals.neben[1]||""}</td><td>${totals.neben[2]||""}</td><td>${totals.neben[3]||""}</td></tr>`;
+  html += "</tbody></table>";
+
+  wrap.innerHTML = html;
+  document.getElementById("previewModal").classList.add("show");
+}
+document.getElementById("previewBtn").onclick = showPreview;
+document.getElementById("closePreview").onclick = () => document.getElementById("previewModal").classList.remove("show");
+document.getElementById("previewModal").onclick = (e) => { if (e.target.id === "previewModal") e.currentTarget.classList.remove("show"); };
+
+// ============================================================
+// --- Auslagen-Modul ---
+// ============================================================
+
+const EXPENSE_CATEGORIES = [
+  { id:"fahrtkosten", label:"Fahrtkosten", icon:"🚗", hex:"var(--buero)" },
+  { id:"material",    label:"Material",    icon:"🧱", hex:"var(--baustelle)" },
+  { id:"bewirtung",   label:"Bewirtung",   icon:"🍽️", hex:"var(--sonderurlaub)" },
+  { id:"sonstiges",   label:"Sonstiges",   icon:"📎", hex:"var(--muted2)" },
+];
+function expenseCatById(id){ return EXPENSE_CATEGORIES.find(c => c.id === id); }
+
+let expenses = JSON.parse(localStorage.getItem("kv_expenses") || "[]");
+function saveExpenses(){ localStorage.setItem("kv_expenses", JSON.stringify(expenses)); }
+
+let expenseDraft = null;
+let editingExpenseId = null;
+
+// --- Tabs ---
+const tabBtnKosten = document.getElementById("tabBtnKosten");
+const tabBtnAuslagen = document.getElementById("tabBtnAuslagen");
+const panelKosten = document.getElementById("panelKosten");
+const panelAuslagen = document.getElementById("panelAuslagen");
+function switchTab(tab){
+  const isKosten = tab === "kosten";
+  tabBtnKosten.classList.toggle("active", isKosten);
+  tabBtnAuslagen.classList.toggle("active", !isKosten);
+  panelKosten.style.display = isKosten ? "" : "none";
+  panelAuslagen.style.display = isKosten ? "none" : "";
+  if (!isKosten) renderExpensesList();
+}
+tabBtnKosten.onclick = () => switchTab("kosten");
+tabBtnAuslagen.onclick = () => switchTab("auslagen");
+
+// --- Elemente ---
+const receiptCapture = document.getElementById("receiptCapture");
+const captureBtn = document.getElementById("captureBtn");
+const expenseFormCard = document.getElementById("expenseFormCard");
+const expenseFormTitle = document.getElementById("expenseFormTitle");
+const receiptPreviewWrapOuter = document.getElementById("receiptPreviewWrapOuter");
+const ocrStatusEl = document.getElementById("ocrStatusEl");
+const katRow = document.getElementById("katRow");
+const ausgDatum = document.getElementById("ausgDatum");
+const ausgBetrag = document.getElementById("ausgBetrag");
+const ausgBv = document.getElementById("ausgBv");
+const bewirtungFields = document.getElementById("bewirtungFields");
+const ausgTeilnehmer = document.getElementById("ausgTeilnehmer");
+const ausgAnlass = document.getElementById("ausgAnlass");
+const ausgBegruendung = document.getElementById("ausgBegruendung");
+const deleteExpenseBtn = document.getElementById("deleteExpenseBtn");
+
+function renderKatRow(){
+  katRow.innerHTML = "";
+  EXPENSE_CATEGORIES.forEach(c => {
+    const btn = document.createElement("button");
+    const active = expenseDraft.category === c.id;
+    btn.className = "katbtn" + (active ? " active" : "");
+    if (active){
+      btn.style.background = `color-mix(in srgb, ${c.hex} 30%, transparent)`;
+      btn.style.borderColor = c.hex;
+    }
+    btn.innerHTML = `<span class="icon">${c.icon}</span>${c.label}`;
+    btn.onclick = () => {
+      expenseDraft.category = c.id;
+      bewirtungFields.style.display = c.id === "bewirtung" ? "block" : "none";
+      renderKatRow();
+    };
+    katRow.appendChild(btn);
+  });
+}
+
+function renderBvSelect(){
+  ausgBv.innerHTML = '<option value="">– kein Bauvorhaben –</option>';
+  projects.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.number ? `${p.name} (#${p.number})` : p.name;
+    ausgBv.appendChild(opt);
+  });
+  ausgBv.value = expenseDraft.projectId || "";
+}
+
+// --- Bild komprimieren (Canvas, vor dem Speichern in localStorage) ---
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- Bildvorverarbeitung für OCR: Graustufen + Kontrast ---
+function preprocessForOcr(dataUrl){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      const contrast = 1.35;
+      const intercept = 128 * (1 - contrast);
+      for (let i=0; i<d.length; i+=4){
+        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        let v = gray*contrast + intercept;
+        v = Math.max(0, Math.min(255, v));
+        d[i] = d[i+1] = d[i+2] = v;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function parseGermanDateToIso(text){
+  const m = text.match(/(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{2,4})/);
+  if (!m) return null;
+  let [, d, mo, y] = m;
+  d = d.padStart(2,"0"); mo = mo.padStart(2,"0");
+  if (y.length === 2) y = (Number(y) > 50 ? "19" : "20") + y;
+  if (Number(mo) < 1 || Number(mo) > 12 || Number(d) < 1 || Number(d) > 31) return null;
+  const iso = `${y}-${mo}-${d}`;
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return null;
+  return iso;
+}
+function parseGermanAmount(text){
+  const cleaned = text.replace(/[€EURur]/g, "").trim();
+  const m = cleaned.match(/\d{1,3}(?:[.\s]\d{3})*,\d{1,2}|\d+,\d{1,2}|\d+\.\d{1,2}|\d+/);
+  if (!m) return null;
+  let raw = m[0];
+  if (raw.includes(",")) raw = raw.replace(/[.\s]/g, "").replace(",", ".");
+  const val = parseFloat(raw);
+  return isNaN(val) ? null : val;
+}
+function applyOcrDate(text){
+  const iso = parseGermanDateToIso(text);
+  if (iso){ ausgDatum.value = iso; showToast("Datum übernommen"); }
+  else showToast("Kein gültiges Datum erkannt", "error");
+}
+function applyOcrAmount(text){
+  const val = parseGermanAmount(text);
+  if (val !== null){ ausgBetrag.value = val.toFixed(2); showToast("Betrag übernommen"); }
+  else showToast("Kein gültiger Betrag erkannt", "error");
+}
+
+function renderReceiptPreview(words){
+  receiptPreviewWrapOuter.innerHTML = "";
+  if (!expenseDraft || !expenseDraft.imageDataUrl) return;
+  const wrap = document.createElement("div");
+  wrap.className = "receiptpreviewwrap";
+  const img = document.createElement("img");
+  img.src = expenseDraft.imageDataUrl;
+  wrap.appendChild(img);
+  receiptPreviewWrapOuter.appendChild(wrap);
+  const place = () => placeWordOverlays(wrap, img, words || []);
+  if (img.complete) place(); else img.onload = place;
+}
+
+function placeWordOverlays(wrap, img, words){
+  Array.from(wrap.querySelectorAll(".ocrword")).forEach(el => el.remove());
+  const nw = img.naturalWidth, nh = img.naturalHeight;
+  if (!nw || !nh) return;
+  words.forEach(w => {
+    const b = w.bbox;
+    const el = document.createElement("div");
+    el.className = "ocrword" + (w.guess === "datum" ? " datum-guess" : w.guess === "betrag" ? " betrag-guess" : "");
+    el.style.left = ((b.x0/nw)*100) + "%";
+    el.style.top = ((b.y0/nh)*100) + "%";
+    el.style.width = (((b.x1-b.x0)/nw)*100) + "%";
+    el.style.height = (((b.y1-b.y0)/nh)*100) + "%";
+    el.onclick = (ev) => { ev.stopPropagation(); showOcrPopover(el, w.text); };
+    wrap.appendChild(el);
+  });
+}
+
+function showOcrPopover(el, text){
+  document.querySelectorAll(".ocrpopover").forEach(p => p.remove());
+  const wrap = el.parentElement;
+  const pop = document.createElement("div");
+  pop.className = "ocrpopover";
+  pop.style.left = (el.offsetLeft + el.offsetWidth/2) + "px";
+  pop.style.top = el.offsetTop + "px";
+  pop.innerHTML = `<button class="toDate">→ Datum</button><button class="toBetrag">→ Betrag</button>`;
+  pop.querySelector(".toDate").onclick = (ev) => { ev.stopPropagation(); applyOcrDate(text); pop.remove(); };
+  pop.querySelector(".toBetrag").onclick = (ev) => { ev.stopPropagation(); applyOcrAmount(text); pop.remove(); };
+  wrap.appendChild(pop);
+  setTimeout(() => {
+    document.addEventListener("click", function closeOnce(){ pop.remove(); document.removeEventListener("click", closeOnce); });
+  }, 0);
+}
+
+async function runOcr(dataUrl){
+  ocrStatusEl.innerHTML = '<div class="ocrstatus">🔍 Texterkennung läuft…</div>';
+  try{
+    const preprocessed = await preprocessForOcr(dataUrl);
+    const result = await Tesseract.recognize(preprocessed, "deu", { logger: () => {} });
+    const words = (result.data.words || [])
+      .filter(w => w.text && w.text.trim().length > 0 && w.confidence > 35)
+      .map(w => ({ text: w.text.trim(), bbox: w.bbox, guess: null }));
+
+    let dateGuessDone = false, amountGuessDone = false;
+    words.forEach(w => {
+      if (!dateGuessDone){
+        const iso = parseGermanDateToIso(w.text);
+        if (iso){ w.guess = "datum"; ausgDatum.value = iso; dateGuessDone = true; }
+      }
+    });
+    words.forEach(w => {
+      if (!amountGuessDone && /\d/.test(w.text) && w.guess !== "datum"){
+        const val = parseGermanAmount(w.text);
+        if (val !== null && val > 0 && val < 100000){ w.guess = "betrag"; ausgBetrag.value = val.toFixed(2); amountGuessDone = true; }
+      }
+    });
+
+    expenseDraft.ocrWords = words;
+    renderReceiptPreview(words);
+    ocrStatusEl.innerHTML = `<div class="ocrstatus">${words.length} Textfelder erkannt – zum Übernehmen antippen. Vorschläge (Datum/Betrag) sind farbig markiert, alle Felder bleiben korrigierbar.</div>`;
+  } catch(err){
+    console.error(err);
+    ocrStatusEl.innerHTML = '<div class="ocrstatus">Texterkennung fehlgeschlagen oder nicht verfügbar. Werte bitte manuell eintragen.</div>';
+  }
+}
+
+captureBtn.onclick = () => receiptCapture.click();
+
+receiptCapture.onchange = (e) => {
+  const file = e.target.files[0];
+  receiptCapture.value = "";
+  if (file) startNewExpenseFromImage(file);
+};
+
+async function startNewExpenseFromImage(file){
+  editingExpenseId = null;
+  const now = new Date();
+  expenseDraft = {
+    id: "e_" + Date.now(),
+    date: dateKey(now.getFullYear(), now.getMonth(), now.getDate()),
+    category: null,
+    projectId: "",
+    imageDataUrl: null,
+    ocrWords: []
+  };
+
+  expenseFormTitle.textContent = "Neue Auslage";
+  deleteExpenseBtn.style.display = "none";
+  expenseFormCard.style.display = "block";
+  expenseFormCard.scrollIntoView({ behavior:"smooth", block:"start" });
+
+  renderKatRow();
+  renderBvSelect();
+  ausgDatum.value = expenseDraft.date;
+  ausgBetrag.value = "";
+  ausgTeilnehmer.value = "";
+  ausgAnlass.value = "";
+  ausgBegruendung.value = "";
+  bewirtungFields.style.display = "none";
+  renderReceiptPreview([]);
+  ocrStatusEl.innerHTML = "";
+
+  try{
+    const dataUrl = await compressImage(file, 1400, 0.72);
+    expenseDraft.imageDataUrl = dataUrl;
+    renderReceiptPreview([]);
+    runOcr(dataUrl);
+  }catch(err){
+    console.error(err);
+    showToast("Bild konnte nicht verarbeitet werden", "error");
+  }
+}
+
+function openExpenseForEdit(id){
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  editingExpenseId = id;
+  expenseDraft = { ...e };
+
+  expenseFormTitle.textContent = "Auslage bearbeiten";
+  deleteExpenseBtn.style.display = "block";
+  expenseFormCard.style.display = "block";
+  expenseFormCard.scrollIntoView({ behavior:"smooth", block:"start" });
+
+  renderKatRow();
+  renderBvSelect();
+  ausgDatum.value = e.date;
+  ausgBetrag.value = Number(e.amount).toFixed(2);
+  ausgTeilnehmer.value = e.participants || "";
+  ausgAnlass.value = e.occasion || "";
+  ausgBegruendung.value = e.reason || "";
+  bewirtungFields.style.display = e.category === "bewirtung" ? "block" : "none";
+  renderReceiptPreview([]);
+  ocrStatusEl.innerHTML = "";
+}
+
+document.getElementById("cancelExpenseBtn").onclick = () => {
+  expenseFormCard.style.display = "none";
+  expenseDraft = null; editingExpenseId = null;
+};
+
+document.getElementById("saveExpenseBtn").onclick = () => {
+  if (!expenseDraft) return;
+  if (!expenseDraft.category){ showToast("Bitte Kategorie wählen", "error"); return; }
+  const dateVal = ausgDatum.value;
+  if (!dateVal){ showToast("Bitte Datum angeben", "error"); return; }
+  const amountVal = parseFloat(ausgBetrag.value);
+  if (isNaN(amountVal) || amountVal <= 0){ showToast("Bitte gültigen Betrag angeben", "error"); return; }
+
+  const entry = {
+    id: expenseDraft.id,
+    date: dateVal,
+    amount: Math.round(amountVal * 100) / 100,
+    category: expenseDraft.category,
+    projectId: ausgBv.value || "",
+    reason: ausgBegruendung.value.trim(),
+    participants: expenseDraft.category === "bewirtung" ? ausgTeilnehmer.value.trim() : "",
+    occasion: expenseDraft.category === "bewirtung" ? ausgAnlass.value.trim() : "",
+    imageDataUrl: expenseDraft.imageDataUrl || null
+  };
+
+  const idx = expenses.findIndex(x => x.id === entry.id);
+  if (idx >= 0) expenses[idx] = entry; else expenses.push(entry);
+  saveExpenses();
+  expenseFormCard.style.display = "none";
+  expenseDraft = null; editingExpenseId = null;
+  showToast("Auslage gespeichert");
+  renderExpensesList();
+};
+
+deleteExpenseBtn.onclick = () => {
+  if (!editingExpenseId) return;
+  expenses = expenses.filter(x => x.id !== editingExpenseId);
+  saveExpenses();
+  expenseFormCard.style.display = "none";
+  expenseDraft = null; editingExpenseId = null;
+  showToast("Auslage gelöscht");
+  renderExpensesList();
+};
+
+function renderExpensesList(){
+  const label = document.getElementById("expenseMonthLabel");
+  if (!label) return;
+  label.textContent = `${MONTHS[viewM]} ${viewY}`;
+  const monthPrefix = `${viewY}-${pad(viewM+1)}-`;
+  const list = expenses.filter(e => e.date.startsWith(monthPrefix)).sort((a,b) => a.date.localeCompare(b.date));
+  const container = document.getElementById("expensesList");
+  container.innerHTML = "";
+  if (list.length === 0){
+    container.innerHTML = '<div class="emptynote">Noch keine Auslagen in diesem Monat erfasst.</div>';
+  }
+  let total = 0;
+  list.forEach(e => {
+    total += Number(e.amount) || 0;
+    const cat = expenseCatById(e.category) || { label:e.category, icon:"", hex:"var(--muted2)" };
+    const proj = projects.find(p => p.id === e.projectId);
+    const dparts = e.date.split("-");
+    const row = document.createElement("div");
+    row.className = "expenseitem";
+    row.innerHTML = `
+      ${e.imageDataUrl ? `<img class="expensethumb" src="${e.imageDataUrl}">` : `<div class="expensethumb"></div>`}
+      <div class="expensemain">
+        <div class="expensetop"><span class="katchip" style="background:color-mix(in srgb, ${cat.hex} 28%, transparent);color:#fff;">${cat.icon} ${cat.label}</span></div>
+        <div class="expensesub">${dparts[2]}.${dparts[1]}.${dparts[0]}${proj ? " · " + escapeHtml(proj.name) : ""}${e.reason ? " · " + escapeHtml(e.reason) : ""}</div>
+      </div>
+      <div class="expenseamount mono">${Number(e.amount).toFixed(2).replace(".", ",")} €</div>
+      <button class="expenseedit">✎</button>
+    `;
+    row.querySelector(".expenseedit").onclick = () => openExpenseForEdit(e.id);
+    container.appendChild(row);
+  });
+  document.getElementById("expensesTotalValue").textContent = total.toFixed(2).replace(".", ",") + " €";
+}
+
+function getImageDimensions(dataUrl){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.src = dataUrl;
+  });
+}
+
+document.getElementById("downloadExpensesPdfBtn").onclick = () => downloadExpensesPdf();
+
+async function downloadExpensesPdf(){
+  const monthPrefix = `${viewY}-${pad(viewM+1)}-`;
+  const list = expenses.filter(e => e.date.startsWith(monthPrefix)).sort((a,b) => a.date.localeCompare(b.date));
+  if (list.length === 0){ showToast("Keine Auslagen in diesem Monat", "error"); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+  const name = settings.name || "";
+
+  doc.setFontSize(14);
+  doc.text(`Auslagen · ${MONTHS[viewM]} ${viewY}`, 14, 16);
+  doc.setFontSize(10);
+  if (name) doc.text(name, 14, 22);
+
+  const head = [["Nr.","Datum","Kategorie","Bauvorhaben","Betrag","Begründung"]];
+  const body = list.map((e, idx) => {
+    const proj = projects.find(p => p.id === e.projectId);
+    const cat = expenseCatById(e.category);
+    let begr = e.reason || "";
+    if (e.category === "bewirtung"){
+      const extra = [e.participants ? `Teilnehmer: ${e.participants}` : "", e.occasion ? `Anlass: ${e.occasion}` : ""].filter(Boolean).join(" · ");
+      if (extra) begr = begr ? `${begr} (${extra})` : extra;
+    }
+    return [
+      String(idx+1),
+      e.date.split("-").reverse().join("."),
+      cat ? cat.label : e.category,
+      proj ? proj.name : "–",
+      Number(e.amount).toFixed(2).replace(".", ",") + " €",
+      begr || "–"
+    ];
+  });
+  const total = list.reduce((s,e) => s + (Number(e.amount)||0), 0);
+  body.push(["", "", "", "Summe", total.toFixed(2).replace(".", ",") + " €", ""]);
+
+  doc.autoTable({
+    startY: name ? 26 : 22,
+    head, body,
+    styles:{ fontSize:8, cellPadding:2 },
+    headStyles:{ fillColor:[15,27,38] },
+    columnStyles:{ 0:{cellWidth:8}, 4:{cellWidth:22} },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.row.index === body.length-1) data.cell.styles.fontStyle = "bold";
+    }
+  });
+
+  for (let i=0; i<list.length; i++){
+    const e = list[i];
+    if (!e.imageDataUrl) continue;
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.text(`Anlage ${i+1} · ${e.date.split("-").reverse().join(".")} · ${Number(e.amount).toFixed(2).replace(".", ",")} €`, 14, 16);
+    const dims = await getImageDimensions(e.imageDataUrl);
+    const maxW = 180, maxH = 250;
+    let w = dims.width, h = dims.height;
+    const scale = Math.min(maxW/w, maxH/h, 1);
+    w *= scale; h *= scale;
+    const x = (210 - w) / 2;
+    doc.addImage(e.imageDataUrl, "JPEG", x, 24, w, h);
+  }
+
+  doc.save(`Auslagen_${MONTHS[viewM]}_${viewY}.pdf`);
+  showToast("PDF heruntergeladen");
+}
+
+// --- Init ---
+loadDraftFromEntry();
+renderAll();
+checkReminder();
+
+// --- PWA: Service Worker registrieren ---
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((err) => {
+      console.warn("Service Worker konnte nicht registriert werden:", err);
+    });
+  });
+}
+</script>
+</body>
+</html>
