@@ -1,4 +1,4 @@
-const CACHE_NAME = "kostenverteilung-v3";
+const CACHE_NAME = "kostenverteilung-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
