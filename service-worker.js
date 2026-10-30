@@ -1,8 +1,9 @@
-const CACHE_NAME = "kostenverteilung-v2";
+const CACHE_NAME = "kostenverteilung-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./logo.svg",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-512-maskable.png"
