@@ -78,6 +78,18 @@
   .projectnum{font-size:10.5px;color:var(--muted2);}
   .pctinput{width:60px;text-align:right;}
   .pctsign{font-size:13px;color:var(--muted2);}
+  .projectitem{margin-bottom:12px;}
+  .projectitem .projectrow{margin-bottom:4px;}
+  .pctslider{position:relative;height:34px;margin:0 6px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .pcttrack{position:absolute;left:0;right:0;top:9px;height:6px;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(143,168,184,0.10) 0 4px,transparent 4px 8px);}
+  .pctavail{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:rgba(143,168,184,0.22);}
+  .pctfill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent);}
+  .pctdot{position:absolute;top:1px;width:2px;height:4px;margin-left:-1px;border-radius:1px;background:rgba(232,237,241,0.35);}
+  .pctthumb{position:absolute;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+  .pctslider.zero .pctthumb{border-color:var(--muted2);}
+  .pctlabels{position:absolute;left:0;right:0;top:20px;height:12px;}
+  .pctlabel{position:absolute;transform:translateX(-50%);font-size:9.5px;color:var(--muted2);font-family:'IBM Plex Mono',monospace;}
+  .pctlabel.max{color:var(--accent);font-weight:600;}
   .delbtn{background:none;border:none;color:#5C7183;cursor:pointer;padding:4px;font-size:14px;}
   .sumrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
   .sumlabel{font-size:11.5px;color:var(--muted2);}
@@ -725,22 +737,79 @@ function renderDayEditor(){
     if (projects.length === 0){
       list.innerHTML = `<div class="emptynote">Noch keine Bauvorhaben angelegt. Mit "＋ Neu" hinzufügen.</div>`;
     }
+    const sliderRows = [];
+    const refreshSliders = () => sliderRows.forEach(r => r.update());
     projects.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "projectrow";
-      row.innerHTML = `
-        <div class="projectname">${escapeHtml(p.name)} ${p.number ? `<span class="projectnum mono">#${escapeHtml(p.number)}</span>` : ""}</div>
-        <input type="number" min="0" max="100" class="pctinput mono" placeholder="0" value="${draftSplits[p.id] ?? ""}">
-        <span class="pctsign mono">%</span>
-        <button class="delbtn">🗑</button>
+      const item = document.createElement("div");
+      item.className = "projectitem";
+      item.innerHTML = `
+        <div class="projectrow">
+          <div class="projectname">${escapeHtml(p.name)} ${p.number ? `<span class="projectnum mono">#${escapeHtml(p.number)}</span>` : ""}</div>
+          <input type="number" min="0" max="100" step="5" class="pctinput mono" placeholder="0" value="${draftSplits[p.id] ?? ""}">
+          <span class="pctsign mono">%</span>
+          <button class="delbtn">🗑</button>
+        </div>
+        <div class="pctslider">
+          <div class="pcttrack"><div class="pctavail"></div><div class="pctfill"></div><div class="pctdots"></div><div class="pctthumb"></div></div>
+          <div class="pctlabels"></div>
+        </div>
       `;
-      const input = row.querySelector("input");
-      input.oninput = () => {
-        let v = input.value === "" ? "" : Math.max(0, Math.min(100, Number(input.value)));
+      const input = item.querySelector("input");
+      const slider = item.querySelector(".pctslider");
+      const avail = item.querySelector(".pctavail");
+      const fill = item.querySelector(".pctfill");
+      const dots = item.querySelector(".pctdots");
+      const thumb = item.querySelector(".pctthumb");
+      const labels = item.querySelector(".pctlabels");
+
+      // Maximal moeglicher Wert = 100 minus Summe der anderen Bauvorhaben
+      const maxFor = () => {
+        const others = Object.entries(draftSplits).reduce((a,[k,v]) => k === p.id ? a : a + (Number(v)||0), 0);
+        return Math.max(0, 100 - others);
+      };
+      const setValue = (v, fromInput) => {
         draftSplits[p.id] = v;
+        if (!fromInput) input.value = v === "" ? "" : v;
+        refreshSliders();
         renderSum();
       };
-      row.querySelector(".delbtn").onclick = () => {
+      const update = () => {
+        const max = maxFor();
+        const v = Number(draftSplits[p.id]) || 0;
+        avail.style.width = max + "%";
+        fill.style.width = v + "%";
+        thumb.style.left = v + "%";
+        slider.classList.toggle("zero", v === 0);
+        let d = "";
+        for (let i = 5; i < 100; i += 5){ if (i <= max) d += `<span class="pctdot" style="left:${i}%"></span>`; }
+        dots.innerHTML = d;
+        let l = "";
+        [0,25,50,75,100].forEach(i => { if (i <= max && Math.abs(i - max) >= 10) l += `<span class="pctlabel" style="left:${i}%">${i}</span>`; });
+        l += `<span class="pctlabel max" style="left:${max}%">${max}</span>`;
+        labels.innerHTML = l;
+        input.max = max;
+      };
+      sliderRows.push({ update });
+
+      const valueAt = (clientX) => {
+        const rect = slider.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        return Math.min(maxFor(), Math.round(ratio * 20) * 5);
+      };
+      slider.addEventListener("pointerdown", ev => {
+        slider.setPointerCapture(ev.pointerId);
+        setValue(valueAt(ev.clientX));
+      });
+      slider.addEventListener("pointermove", ev => {
+        if (slider.hasPointerCapture(ev.pointerId)) setValue(valueAt(ev.clientX));
+      });
+
+      input.oninput = () => {
+        const v = input.value === "" ? "" : Math.max(0, Math.min(maxFor(), Number(input.value)));
+        setValue(v, true);
+      };
+      input.onchange = () => { input.value = draftSplits[p.id] === "" || draftSplits[p.id] === undefined ? "" : draftSplits[p.id]; };
+      item.querySelector(".delbtn").onclick = () => {
         projects = projects.filter(x => x.id !== p.id);
         saveProjects();
         Object.keys(entries).forEach(k => {
@@ -750,8 +819,9 @@ function renderDayEditor(){
         delete draftSplits[p.id];
         renderAll();
       };
-      list.appendChild(row);
+      list.appendChild(item);
     });
+    refreshSliders();
     document.getElementById("sumRow").style.display = projects.length > 0 ? "flex" : "none";
     renderSum();
   }
