@@ -1,13 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>Kostenverteilung</title>
   <rect width="512" height="512" rx="112" fill="#0F1B26"/>
-  <!-- Ring als Verteilung: drei Anteile (Baustelle, Büro, Homeoffice) -->
-  <g transform="translate(256 256) rotate(-90)" fill="none" stroke-width="58">
-    <circle r="148" stroke="#C97A3D" stroke-dasharray="486 444"/>
-    <circle r="148" stroke="#3B6E8F" stroke-dasharray="208 722" stroke-dashoffset="-510"/>
-    <circle r="148" stroke="#5C8A5C" stroke-dasharray="164 766" stroke-dashoffset="-742"/>
+  <!-- KV-Monogramm: K weiß, V orange, darunter ein in drei Anteile geteilter Balken -->
+  <g fill="none" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M118 136 V328 M118 236 L208 136 M144 210 L214 328" stroke="#E8EDF1"/>
+    <path d="M262 136 L328 328 L394 136" stroke="#C97A3D"/>
   </g>
-  <!-- Bauvorhaben: Gebäude mit Giebel -->
-  <path d="M190 312 V236 L256 182 L322 236 V312 Z" fill="#E8EDF1"/>
-  <rect x="240" y="262" width="32" height="50" rx="3" fill="#0F1B26"/>
+  <rect x="96" y="376" width="146" height="26" rx="13" fill="#C97A3D"/>
+  <rect x="254" y="376" width="88" height="26" rx="13" fill="#3B6E8F"/>
+  <rect x="354" y="376" width="62" height="26" rx="13" fill="#5C8A5C"/>
 </svg>
