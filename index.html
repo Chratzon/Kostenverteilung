@@ -11,7 +11,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kostenverteilung">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -33,12 +34,12 @@
     background-image:linear-gradient(rgba(143,168,184,0.06) 1px, transparent 1px),
                       linear-gradient(90deg, rgba(143,168,184,0.06) 1px, transparent 1px);
     background-size:24px 24px;
-    padding-bottom:80px;
+    padding-bottom:calc(84px + env(safe-area-inset-bottom));
   }
   .mono{font-family:'IBM Plex Mono',monospace;}
-  header{padding:20px 16px 12px; border-bottom:1px solid var(--border);}
+  header{padding:calc(14px + env(safe-area-inset-top)) 12px 12px; border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30;background:rgba(15,27,38,0.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
   .headwrap{display:flex; align-items:center; gap:10px;}
-  .logo{width:36px;height:36px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+  .logo{width:38px;height:38px;display:block;flex-shrink:0;}
   .title{font-size:17px;font-weight:700;letter-spacing:0.2px;}
   .subtitle{font-size:11.5px;color:var(--muted);letter-spacing:0.5px;}
   .wrap{max-width:520px;margin:0 auto;padding:16px;}
@@ -77,6 +78,18 @@
   .projectnum{font-size:10.5px;color:var(--muted2);}
   .pctinput{width:60px;text-align:right;}
   .pctsign{font-size:13px;color:var(--muted2);}
+  .projectitem{margin-bottom:12px;}
+  .projectitem .projectrow{margin-bottom:4px;}
+  .pctslider{position:relative;height:34px;margin:0 6px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .pcttrack{position:absolute;left:0;right:0;top:9px;height:6px;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(143,168,184,0.10) 0 4px,transparent 4px 8px);}
+  .pctavail{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:rgba(143,168,184,0.22);}
+  .pctfill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent);}
+  .pctdot{position:absolute;top:1px;width:2px;height:4px;margin-left:-1px;border-radius:1px;background:rgba(232,237,241,0.35);}
+  .pctthumb{position:absolute;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+  .pctslider.zero .pctthumb{border-color:var(--muted2);}
+  .pctlabels{position:absolute;left:0;right:0;top:20px;height:12px;}
+  .pctlabel{position:absolute;transform:translateX(-50%);font-size:9.5px;color:var(--muted2);font-family:'IBM Plex Mono',monospace;}
+  .pctlabel.max{color:var(--accent);font-weight:600;}
   .delbtn{background:none;border:none;color:#5C7183;cursor:pointer;padding:4px;font-size:14px;}
   .sumrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
   .sumlabel{font-size:11.5px;color:var(--muted2);}
@@ -91,7 +104,7 @@
   .previewbtn{border:1.5px solid var(--border-strong);background:transparent;color:var(--text);}
   .downloadbtn{border:1.5px solid var(--green);background:var(--greenBg);color:var(--greenText);}
   .footnote{font-size:10.5px;color:#4E6577;text-align:center;margin-top:12px;line-height:1.6;}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;}
   .toast.show{opacity:1;}
   .toast.ok{background:#2E4A38;}
   .toast.error{background:#5A2E2E;}
@@ -114,10 +127,31 @@
   .modalfoot{padding:14px 16px;border-top:1px solid var(--border);}
   .previewlegend{padding:10px 16px;font-size:10.5px;color:var(--muted2);border-top:1px solid var(--border);line-height:1.6;}
 
-  /* --- Tabs (Kostenverteilung / Auslagen) --- */
-  .maintabs{display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:16px;}
-  .maintabs button{flex:1;border:none;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:10px 4px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
-  .maintabs button.active{background:var(--accent);color:var(--bg);}
+  /* --- Navigation: Menü-Button, Seitenmenü, untere Leiste --- */
+  .menubtn{width:40px;height:40px;border-radius:9px;border:1px solid var(--border-strong);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:auto;padding:0;}
+  .menubtn svg{width:20px;height:20px;}
+  .draweroverlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .draweroverlay.show{opacity:1;pointer-events:auto;}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(280px,82vw);background:#132433;border-left:1px solid var(--border-strong);z-index:91;transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;padding:calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));box-shadow:-8px 0 30px rgba(0,0,0,0.4);}
+  .drawer.show{transform:none;}
+  .drawerhead{display:flex;align-items:center;gap:10px;padding:0 6px 14px;margin-bottom:8px;border-bottom:1px solid var(--border);}
+  .drawerhead .logo{width:30px;height:30px;}
+  .drawerhead .title{font-size:15px;flex:1;}
+  .draweritem{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;border:none;border-radius:9px;background:transparent;color:#B8C7D1;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;}
+  .draweritem .icon{font-size:17px;width:24px;text-align:center;}
+  .draweritem.active{background:rgba(201,122,61,0.16);color:var(--accent);}
+  .drawersep{height:1px;background:var(--border);margin:8px 6px;}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(19,36,51,0.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--border-strong);padding:6px 8px calc(6px + env(safe-area-inset-bottom));}
+  .tabbarinner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+  .tabbar button{border:none;background:transparent;color:var(--muted2);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border-radius:9px;cursor:pointer;font-size:10.5px;font-weight:600;font-family:inherit;}
+  .tabbar button .icon{font-size:19px;line-height:1;filter:grayscale(0.6);opacity:0.75;}
+  .tabbar button.active{color:var(--accent);background:rgba(201,122,61,0.12);}
+  .tabbar button.active .icon{filter:none;opacity:1;}
+  .daynav{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .daynav .dayheader{flex:1;justify-content:center;margin-bottom:0;}
+  .todaylink{display:block;margin:0 auto 10px;background:none;border:none;color:var(--accent);font-size:11.5px;font-weight:600;cursor:pointer;}
+  .viewtitle{font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-bottom:10px;}
+  .settingsgroup{margin-bottom:4px;}
 
   /* --- Auslagen: Kategorien --- */
   .katrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;}
@@ -169,33 +203,32 @@
 
 <header>
   <div class="headwrap">
-    <div class="logo">🏗️</div>
+    <img class="logo" src="logo.svg" alt="KV">
     <div>
       <div class="title">Kostenverteilung</div>
       <div class="subtitle mono">TAGESERFASSUNG · BAUVORHABEN</div>
     </div>
+    <button class="menubtn" id="menuBtn" aria-label="Menü öffnen" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
   </div>
 </header>
 
+<div class="draweroverlay" id="drawerOverlay"></div>
+<nav class="drawer" id="drawer" aria-label="Hauptmenü" aria-hidden="true">
+  <div class="drawerhead">
+    <img class="logo" src="logo.svg" alt="">
+    <div class="title">Kostenverteilung</div>
+    <button class="modalclose" id="drawerClose" aria-label="Menü schließen">✕</button>
+  </div>
+  <button class="draweritem" data-view="heute"><span class="icon">📝</span> Heute</button>
+  <button class="draweritem" data-view="kalender"><span class="icon">📅</span> Kalender</button>
+  <button class="draweritem" data-view="auslagen"><span class="icon">🧾</span> Auslagenabrechnung</button>
+  <div class="drawersep"></div>
+  <button class="draweritem" data-view="einstellungen"><span class="icon">⚙️</span> Einstellungen</button>
+</nav>
+
 <div class="wrap">
-
-  <div class="card" style="padding:12px 16px;">
-    <div class="settingsrow">
-      <label class="mono">Name:</label>
-      <input type="text" id="nameInput" placeholder="Vorname Nachname" style="flex:1;">
-    </div>
-  </div>
-
-  <div class="card" style="padding:12px 16px;">
-    <div class="settingsrow" style="margin-bottom:8px;">
-      <label class="mono">🔔 Erinnerung:</label>
-      <input type="time" id="reminderTime" style="width:110px;">
-      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted2);margin-left:auto;cursor:pointer;">
-        <input type="checkbox" id="reminderEnabled"> aktiv
-      </label>
-    </div>
-    <div id="reminderInfo" style="font-size:10.5px;color:var(--muted2);line-height:1.5;"></div>
-  </div>
 
   <div class="card" id="reminderBanner" style="display:none; border-color:var(--feiertag); padding:12px 16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -207,44 +240,18 @@
     </div>
   </div>
 
-  <div class="navrow">
-    <button class="navbtn" id="prevMonth">‹</button>
-    <div>
-      <div class="monthlabel" id="monthLabel"></div>
-      <div class="monthsub mono" id="monthSub"></div>
-    </div>
-    <button class="navbtn" id="nextMonth">›</button>
-  </div>
-
-  <div class="maintabs">
-    <button id="tabBtnKosten" class="active">📊 Kostenverteilung</button>
-    <button id="tabBtnAuslagen">🧾 Auslagen</button>
-  </div>
-
-  <div id="panelKosten">
-
-  <div class="card calcard">
-    <div class="weekrow">
-      <div class="weekday">Mo</div><div class="weekday">Di</div><div class="weekday">Mi</div>
-      <div class="weekday">Do</div><div class="weekday">Fr</div><div class="weekday">Sa</div><div class="weekday">So</div>
-    </div>
-    <div class="daysgrid" id="daysGrid"></div>
-    <div class="legend">
-      <div class="legenditem"><span class="legenddot" style="background:var(--buero)"></span><span class="legendtext mono">Büro</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--baustelle)"></span><span class="legendtext mono">Baustelle</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--home)"></span><span class="legendtext mono">Homeoffice</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--urlaub)"></span><span class="legendtext mono">Urlaub</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--sonderurlaub)"></span><span class="legendtext mono">Sonderurlaub</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--krank)"></span><span class="legendtext mono">Krank</span></div>
-      <div class="legenditem"><span class="legenddot" style="background:var(--feiertag)"></span><span class="legendtext mono">Feiertag (Bayern)</span></div>
-    </div>
-  </div>
+  <div id="viewHeute">
 
   <div class="card">
-    <div class="dayheader">
-      📅 <span id="dayHeaderDate"></span>
-      <span class="mono" id="dayHeaderWeekday" style="color:var(--muted2);font-size:11.5px;font-weight:400;"></span>
+    <div class="daynav">
+      <button class="navbtn" id="prevDay" aria-label="Vorheriger Tag">‹</button>
+      <div class="dayheader">
+        📅 <span id="dayHeaderDate"></span>
+        <span class="mono" id="dayHeaderWeekday" style="color:var(--muted2);font-size:11.5px;font-weight:400;"></span>
+      </div>
+      <button class="navbtn" id="nextDay" aria-label="Nächster Tag">›</button>
     </div>
+    <button class="todaylink" id="goTodayBtn" style="display:none;">↩ Zurück zu heute</button>
     <div class="holidaynote mono" id="holidayNote"></div>
 
     <div class="daytyperow" id="dayTypeRow"></div>
@@ -277,6 +284,36 @@
     </div>
   </div>
 
+  </div> <!-- /viewHeute -->
+
+  <div class="navrow" id="monthNav" style="display:none;">
+    <button class="navbtn" id="prevMonth">‹</button>
+    <div>
+      <div class="monthlabel" id="monthLabel"></div>
+      <div class="monthsub mono" id="monthSub"></div>
+    </div>
+    <button class="navbtn" id="nextMonth">›</button>
+  </div>
+
+  <div id="viewKalender" style="display:none;">
+
+  <div class="card calcard">
+    <div class="weekrow">
+      <div class="weekday">Mo</div><div class="weekday">Di</div><div class="weekday">Mi</div>
+      <div class="weekday">Do</div><div class="weekday">Fr</div><div class="weekday">Sa</div><div class="weekday">So</div>
+    </div>
+    <div class="daysgrid" id="daysGrid"></div>
+    <div class="legend">
+      <div class="legenditem"><span class="legenddot" style="background:var(--buero)"></span><span class="legendtext mono">Büro</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--baustelle)"></span><span class="legendtext mono">Baustelle</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--home)"></span><span class="legendtext mono">Homeoffice</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--urlaub)"></span><span class="legendtext mono">Urlaub</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--sonderurlaub)"></span><span class="legendtext mono">Sonderurlaub</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--krank)"></span><span class="legendtext mono">Krank</span></div>
+      <div class="legenditem"><span class="legenddot" style="background:var(--feiertag)"></span><span class="legendtext mono">Feiertag (Bayern)</span></div>
+    </div>
+  </div>
+
   <div class="exportbtns">
     <button class="previewbtn" id="previewBtn">👁 Vorschau</button>
     <button class="downloadbtn" id="downloadBtn">⬇ Excel herunterladen</button>
@@ -287,9 +324,9 @@
     Feiertage automatisch nach bayerischem Feiertagskalender ermittelt – Mariä Himmelfahrt gilt nur in überwiegend katholischen Gemeinden, bitte bei Bedarf manuell korrigieren.
   </div>
 
-  </div> <!-- /panelKosten -->
+  </div> <!-- /viewKalender -->
 
-  <div id="panelAuslagen" style="display:none;">
+  <div id="viewAuslagen" style="display:none;">
 
     <div class="card" id="captureCard">
       <input type="file" id="receiptCapture" accept="image/*" capture="environment" style="display:none;">
@@ -372,9 +409,40 @@
       Belegfotos werden komprimiert lokal in diesem Browser gespeichert (localStorage). Texterkennung läuft vollständig im Browser (Tesseract.js), es werden keine Bilder an einen Server gesendet.
     </div>
 
-  </div> <!-- /panelAuslagen -->
+  </div> <!-- /viewAuslagen -->
+
+  <div id="viewEinstellungen" style="display:none;">
+    <div class="viewtitle mono">EINSTELLUNGEN</div>
+  <div class="card settingsgroup" style="padding:12px 16px;">
+    <div class="settingsrow">
+      <label class="mono">Name:</label>
+      <input type="text" id="nameInput" placeholder="Vorname Nachname" style="flex:1;">
+    </div>
+  </div>
+
+  <div class="card settingsgroup" style="padding:12px 16px;">
+    <div class="settingsrow" style="margin-bottom:8px;">
+      <label class="mono">🔔 Erinnerung:</label>
+      <input type="time" id="reminderTime" style="width:110px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted2);margin-left:auto;cursor:pointer;">
+        <input type="checkbox" id="reminderEnabled"> aktiv
+      </label>
+    </div>
+    <div id="reminderInfo" style="font-size:10.5px;color:var(--muted2);line-height:1.5;"></div>
+  </div>
+
+  </div> <!-- /viewEinstellungen -->
+
 
 </div>
+
+<nav class="tabbar" aria-label="Schnellauswahl">
+  <div class="tabbarinner">
+    <button data-view="heute" class="active"><span class="icon">📝</span>Heute</button>
+    <button data-view="kalender"><span class="icon">📅</span>Kalender</button>
+    <button data-view="auslagen"><span class="icon">🧾</span>Auslagen</button>
+  </div>
+</nav>
 
 <div class="toast" id="toast"></div>
 
@@ -526,12 +594,14 @@ function showReminderBanner(){
 document.getElementById("reminderDismiss").onclick = () => {
   document.getElementById("reminderBanner").style.display = "none";
 };
-document.getElementById("reminderGoToday").onclick = () => {
+function goToToday(){
   const now = new Date();
   viewY = now.getFullYear(); viewM = now.getMonth(); selectedDay = now.getDate();
   loadDraftFromEntry(); renderAll();
+}
+document.getElementById("reminderGoToday").onclick = () => {
   document.getElementById("reminderBanner").style.display = "none";
-  window.scrollTo({ top:0, behavior:"smooth" });
+  openView("heute");
 };
 
 // Benachrichtigung anzeigen: bevorzugt über den Service Worker, weil der
@@ -612,7 +682,7 @@ function renderCalendar(){
       dot.style.background = "var(--feiertag)";
       cell.appendChild(dot);
     }
-    cell.onclick = () => { selectedDay = d; loadDraftFromEntry(); renderAll(); };
+    cell.onclick = () => { selectedDay = d; loadDraftFromEntry(); renderAll(); showView("heute"); };
     grid.appendChild(cell);
   }
 }
@@ -621,6 +691,9 @@ function renderCalendar(){
 function renderDayEditor(){
   document.getElementById("dayHeaderDate").textContent = `${pad(selectedDay)}.${pad(viewM+1)}.${viewY}`;
   document.getElementById("dayHeaderWeekday").textContent = WEEKDAYS[(new Date(viewY, viewM, selectedDay).getDay() + 6) % 7];
+  const now = new Date();
+  const isToday = viewY === now.getFullYear() && viewM === now.getMonth() && selectedDay === now.getDate();
+  document.getElementById("goTodayBtn").style.display = isToday ? "none" : "block";
 
   const hol = holidayName(viewY, viewM, selectedDay);
   const holNote = document.getElementById("holidayNote");
@@ -664,22 +737,79 @@ function renderDayEditor(){
     if (projects.length === 0){
       list.innerHTML = `<div class="emptynote">Noch keine Bauvorhaben angelegt. Mit "＋ Neu" hinzufügen.</div>`;
     }
+    const sliderRows = [];
+    const refreshSliders = () => sliderRows.forEach(r => r.update());
     projects.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "projectrow";
-      row.innerHTML = `
-        <div class="projectname">${escapeHtml(p.name)} ${p.number ? `<span class="projectnum mono">#${escapeHtml(p.number)}</span>` : ""}</div>
-        <input type="number" min="0" max="100" class="pctinput mono" placeholder="0" value="${draftSplits[p.id] ?? ""}">
-        <span class="pctsign mono">%</span>
-        <button class="delbtn">🗑</button>
+      const item = document.createElement("div");
+      item.className = "projectitem";
+      item.innerHTML = `
+        <div class="projectrow">
+          <div class="projectname">${escapeHtml(p.name)} ${p.number ? `<span class="projectnum mono">#${escapeHtml(p.number)}</span>` : ""}</div>
+          <input type="number" min="0" max="100" step="5" class="pctinput mono" placeholder="0" value="${draftSplits[p.id] ?? ""}">
+          <span class="pctsign mono">%</span>
+          <button class="delbtn">🗑</button>
+        </div>
+        <div class="pctslider">
+          <div class="pcttrack"><div class="pctavail"></div><div class="pctfill"></div><div class="pctdots"></div><div class="pctthumb"></div></div>
+          <div class="pctlabels"></div>
+        </div>
       `;
-      const input = row.querySelector("input");
-      input.oninput = () => {
-        let v = input.value === "" ? "" : Math.max(0, Math.min(100, Number(input.value)));
+      const input = item.querySelector("input");
+      const slider = item.querySelector(".pctslider");
+      const avail = item.querySelector(".pctavail");
+      const fill = item.querySelector(".pctfill");
+      const dots = item.querySelector(".pctdots");
+      const thumb = item.querySelector(".pctthumb");
+      const labels = item.querySelector(".pctlabels");
+
+      // Maximal moeglicher Wert = 100 minus Summe der anderen Bauvorhaben
+      const maxFor = () => {
+        const others = Object.entries(draftSplits).reduce((a,[k,v]) => k === p.id ? a : a + (Number(v)||0), 0);
+        return Math.max(0, 100 - others);
+      };
+      const setValue = (v, fromInput) => {
         draftSplits[p.id] = v;
+        if (!fromInput) input.value = v === "" ? "" : v;
+        refreshSliders();
         renderSum();
       };
-      row.querySelector(".delbtn").onclick = () => {
+      const update = () => {
+        const max = maxFor();
+        const v = Number(draftSplits[p.id]) || 0;
+        avail.style.width = max + "%";
+        fill.style.width = v + "%";
+        thumb.style.left = v + "%";
+        slider.classList.toggle("zero", v === 0);
+        let d = "";
+        for (let i = 5; i < 100; i += 5){ if (i <= max) d += `<span class="pctdot" style="left:${i}%"></span>`; }
+        dots.innerHTML = d;
+        let l = "";
+        [0,25,50,75,100].forEach(i => { if (i <= max && Math.abs(i - max) >= 10) l += `<span class="pctlabel" style="left:${i}%">${i}</span>`; });
+        l += `<span class="pctlabel max" style="left:${max}%">${max}</span>`;
+        labels.innerHTML = l;
+        input.max = max;
+      };
+      sliderRows.push({ update });
+
+      const valueAt = (clientX) => {
+        const rect = slider.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        return Math.min(maxFor(), Math.round(ratio * 20) * 5);
+      };
+      slider.addEventListener("pointerdown", ev => {
+        slider.setPointerCapture(ev.pointerId);
+        setValue(valueAt(ev.clientX));
+      });
+      slider.addEventListener("pointermove", ev => {
+        if (slider.hasPointerCapture(ev.pointerId)) setValue(valueAt(ev.clientX));
+      });
+
+      input.oninput = () => {
+        const v = input.value === "" ? "" : Math.max(0, Math.min(maxFor(), Number(input.value)));
+        setValue(v, true);
+      };
+      input.onchange = () => { input.value = draftSplits[p.id] === "" || draftSplits[p.id] === undefined ? "" : draftSplits[p.id]; };
+      item.querySelector(".delbtn").onclick = () => {
         projects = projects.filter(x => x.id !== p.id);
         saveProjects();
         Object.keys(entries).forEach(k => {
@@ -689,8 +819,9 @@ function renderDayEditor(){
         delete draftSplits[p.id];
         renderAll();
       };
-      list.appendChild(row);
+      list.appendChild(item);
     });
+    refreshSliders();
     document.getElementById("sumRow").style.display = projects.length > 0 ? "flex" : "none";
     renderSum();
   }
@@ -716,6 +847,15 @@ document.getElementById("nextMonth").onclick = () => {
   viewM++; if (viewM > 11){ viewM = 0; viewY++; }
   selectedDay = 1; loadDraftFromEntry(); renderAll();
 };
+
+function shiftDay(n){
+  const d = new Date(viewY, viewM, selectedDay + n);
+  viewY = d.getFullYear(); viewM = d.getMonth(); selectedDay = d.getDate();
+  loadDraftFromEntry(); renderAll();
+}
+document.getElementById("prevDay").onclick = () => shiftDay(-1);
+document.getElementById("nextDay").onclick = () => shiftDay(1);
+document.getElementById("goTodayBtn").onclick = () => goToToday();
 
 document.getElementById("toggleAddProject").onclick = () => {
   const row = document.getElementById("addProjectRow");
@@ -985,21 +1125,46 @@ function saveExpenses(){ localStorage.setItem("kv_expenses", JSON.stringify(expe
 let expenseDraft = null;
 let editingExpenseId = null;
 
-// --- Tabs ---
-const tabBtnKosten = document.getElementById("tabBtnKosten");
-const tabBtnAuslagen = document.getElementById("tabBtnAuslagen");
-const panelKosten = document.getElementById("panelKosten");
-const panelAuslagen = document.getElementById("panelAuslagen");
-function switchTab(tab){
-  const isKosten = tab === "kosten";
-  tabBtnKosten.classList.toggle("active", isKosten);
-  tabBtnAuslagen.classList.toggle("active", !isKosten);
-  panelKosten.style.display = isKosten ? "" : "none";
-  panelAuslagen.style.display = isKosten ? "none" : "";
-  if (!isKosten) renderExpensesList();
+// --- Ansichten (Heute / Kalender / Auslagen / Einstellungen) ---
+const VIEWS = {
+  heute: document.getElementById("viewHeute"),
+  kalender: document.getElementById("viewKalender"),
+  auslagen: document.getElementById("viewAuslagen"),
+  einstellungen: document.getElementById("viewEinstellungen")
+};
+let currentView = "heute";
+function showView(view){
+  currentView = view;
+  Object.entries(VIEWS).forEach(([k, el]) => { el.style.display = k === view ? "" : "none"; });
+  document.getElementById("monthNav").style.display = (view === "kalender" || view === "auslagen") ? "" : "none";
+  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  if (view === "auslagen") renderExpensesList();
+  closeDrawer();
+  window.scrollTo({ top:0 });
 }
-tabBtnKosten.onclick = () => switchTab("kosten");
-tabBtnAuslagen.onclick = () => switchTab("auslagen");
+// "Heute" springt immer zurück auf den aktuellen Tag
+function openView(view){
+  if (view === "heute") goToToday();
+  showView(view);
+}
+document.querySelectorAll("[data-view]").forEach(b => { b.onclick = () => openView(b.dataset.view); });
+
+// --- Seitenmenü ---
+const drawer = document.getElementById("drawer");
+const drawerOverlay = document.getElementById("drawerOverlay");
+const menuBtn = document.getElementById("menuBtn");
+function openDrawer(){
+  drawer.classList.add("show"); drawerOverlay.classList.add("show");
+  drawer.setAttribute("aria-hidden", "false"); menuBtn.setAttribute("aria-expanded", "true");
+}
+function closeDrawer(){
+  drawer.classList.remove("show"); drawerOverlay.classList.remove("show");
+  drawer.setAttribute("aria-hidden", "true"); menuBtn.setAttribute("aria-expanded", "false");
+}
+menuBtn.onclick = openDrawer;
+drawerOverlay.onclick = closeDrawer;
+document.getElementById("drawerClose").onclick = closeDrawer;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
 // --- Elemente ---
 const receiptCapture = document.getElementById("receiptCapture");
