@@ -11,7 +11,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kostenverteilung">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -38,7 +39,7 @@
   .mono{font-family:'IBM Plex Mono',monospace;}
   header{padding:20px 16px 12px; border-bottom:1px solid var(--border);}
   .headwrap{display:flex; align-items:center; gap:10px;}
-  .logo{width:36px;height:36px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+  .logo{width:38px;height:38px;display:block;flex-shrink:0;}
   .title{font-size:17px;font-weight:700;letter-spacing:0.2px;}
   .subtitle{font-size:11.5px;color:var(--muted);letter-spacing:0.5px;}
   .wrap{max-width:520px;margin:0 auto;padding:16px;}
@@ -169,7 +170,7 @@
 
 <header>
   <div class="headwrap">
-    <div class="logo">🏗️</div>
+    <img class="logo" src="logo.svg" alt="Kostenverteilung Logo">
     <div>
       <div class="title">Kostenverteilung</div>
       <div class="subtitle mono">TAGESERFASSUNG · BAUVORHABEN</div>
