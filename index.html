@@ -85,12 +85,14 @@
   .pctsign{font-size:13px;color:var(--muted2);}
   .projectitem{margin-bottom:12px;}
   .projectitem .projectrow{margin-bottom:4px;}
-  .pctslider{position:relative;height:34px;margin:0 6px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .pctslider{position:relative;height:34px;margin:0 6px;touch-action:pan-y;user-select:none;-webkit-user-select:none;}
   .pcttrack{position:absolute;left:0;right:0;top:9px;height:6px;border-radius:3px;background:repeating-linear-gradient(135deg,rgba(143,168,184,0.10) 0 4px,transparent 4px 8px);}
   .pctavail{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:rgba(143,168,184,0.22);}
   .pctfill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent);}
   .pctdot{position:absolute;top:1px;width:2px;height:4px;margin-left:-1px;border-radius:1px;background:rgba(232,237,241,0.35);}
-  .pctthumb{position:absolute;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+  .pctthumb{position:absolute;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--text);border:3px solid var(--accent);box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:grab;touch-action:none;}
+  .pctthumb::before{content:"";position:absolute;left:50%;top:50%;width:40px;height:40px;transform:translate(-50%,-50%);border-radius:50%;}
+  .pctthumb.dragging{cursor:grabbing;transform:scale(1.15);}
   .pctslider.zero .pctthumb{border-color:var(--muted2);}
   .pctlabels{position:absolute;left:0;right:0;top:20px;height:12px;}
   .pctlabel{position:absolute;transform:translateX(-50%);font-size:9.5px;color:var(--muted2);font-family:'IBM Plex Mono',monospace;}
@@ -840,13 +842,19 @@ function renderDayEditor(){
         const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         return Math.min(maxFor(), Math.round(ratio * 20) * 5);
       };
-      slider.addEventListener("pointerdown", ev => {
-        slider.setPointerCapture(ev.pointerId);
-        setValue(valueAt(ev.clientX));
+      // Nur der Knopf selbst laesst sich ziehen. Tippen oder Wischen auf die
+      // Leiste veraendert nichts, damit beim Scrollen nichts verstellt wird.
+      thumb.addEventListener("pointerdown", ev => {
+        ev.preventDefault();
+        thumb.setPointerCapture(ev.pointerId);
+        thumb.classList.add("dragging");
       });
-      slider.addEventListener("pointermove", ev => {
-        if (slider.hasPointerCapture(ev.pointerId)) setValue(valueAt(ev.clientX));
+      thumb.addEventListener("pointermove", ev => {
+        if (thumb.hasPointerCapture(ev.pointerId)) setValue(valueAt(ev.clientX));
       });
+      const endDrag = () => thumb.classList.remove("dragging");
+      thumb.addEventListener("pointerup", endDrag);
+      thumb.addEventListener("pointercancel", endDrag);
 
       input.oninput = () => {
         const v = input.value === "" ? "" : Math.max(0, Math.min(maxFor(), Number(input.value)));
